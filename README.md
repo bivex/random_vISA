@@ -4,6 +4,15 @@
 
 ---
 
+## 📚 Документация
+
+- [🏛 Архитектура и DDD дизайн](docs/ARCHITECTURE.md) — детальное описание слоев Домена, Портов, Адаптеров и Use Cases.
+- [⛵ Sail спецификация и ANTLR4 грамматика](docs/SAIL_SPECIFICATION.md) — структура языка Sail, AST и интеграция ANTLR4 парсера.
+- [⚡ C++20 Эмулятор](docs/CPP_EMULATOR.md) — регистровый файл, CSR, битовый декодер и защита от Undefined Behavior (UB).
+- [🔧 Справочник команд CLI](docs/CLI_REFERENCE.md) — опции и примеры команд `pipeline`, `synthesize`, `parse`, `compile-sail`.
+
+---
+
 ## 🏛 Архитектура проекта (Hexagonal + DDD)
 
 ```
@@ -21,7 +30,7 @@ random_visa/
 │   │   └── events.py               # InstructionSynthesizedEvent, IsaSpecCompletedEvent
 │   └── ports/                      # Ports (Интерфейсы взаимодействия)
 │       ├── inbound/                # Driving Ports (Use Cases)
-│       │   └── ports.py            # GenerateSpecPort, EmitEmulatorPort, RunPipelinePort
+│       │   └── ports.py            # GenerateSpecPort, EmitEmulatorPort, RunPipelinePort, SailParserPort
 │       └── outbound/               # Driven Ports (SPI / Инфраструктура)
 │           └── ports.py            # SailSpecWriterPort, CppCodeEmitterPort, CompilerRunnerPort
 │
@@ -32,8 +41,10 @@ random_visa/
 │
 ├── adapters/                       # ADAPTERS LAYER (Реализация портов)
 │   ├── inbound/                    # Driving Adapters (Входные точки)
-│   │   └── cli/                    # CLI-интерфейс на Rich / Argparse
-│   │       └── main.py
+│   │   ├── cli/main.py             # CLI-интерфейс на Rich / Argparse
+│   │   └── parser/                 # ANTLR4 Sail Parser Adapter
+│   │       ├── antlr/Sail.g4
+│   │       └── sail_antlr_adapter.py
 │   └── outbound/                   # Driven Adapters (Выходные адаптеры)
 │       ├── sail/                   # Запись формальных спецификаций Sail (.sail)
 │       │   └── sail_file_adapter.py
