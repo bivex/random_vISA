@@ -26,12 +26,16 @@ from random_visa.adapters.outbound.compiler.clang_runner_adapter import ClangCom
 from random_visa.adapters.inbound.parser.sail_antlr_adapter import AntlrSailParserAdapter
 
 
+from random_visa.adapters.outbound.c_codegen.c_code_emitter_adapter import CCodeEmitterAdapter
+
+
 def build_composition_root():
     """Dependency Injection / Composition Root."""
     gen_service = RandomVisaGeneratorService()
     gen_use_case = GenerateRandomVisaUseCase(gen_service)
     sail_writer = SailFileAdapter()
     cpp_emitter = CppEmulatorEmitterAdapter()
+    c_emitter = CCodeEmitterAdapter()
     compiler_runner = ClangCompilerRunnerAdapter()
     sail_parser = AntlrSailParserAdapter()
     assembler = VectorAssemblerService()
@@ -42,7 +46,48 @@ def build_composition_root():
         cpp_emitter=cpp_emitter,
         compiler_runner=compiler_runner,
     )
-    return gen_use_case, sail_writer, cpp_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+    return gen_use_case, sail_writer, cpp_emitter, c_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+
+
+def run_compile_c_cmd(args: argparse.Namespace) -> int:
+    console = Console() if HAS_RICH else None
+    _, _, _, c_emitter, _, _, sail_parser, _ = build_composition_root()
+
+    if not os.path.exists(args.file):
+        print(f"Error: file not found '{args.file}'")
+        return 1
+
+    spec = sail_parser.parse_sail_file(args.file, spec_name=args.name)
+    emitted = c_emitter.emit_c_project(spec, args.out_dir)
+
+    if not args.no_compile:
+        # Compile with clang -std=c11
+        compile_cmd = [
+            "clang", "-std=c11", "-O3", "-Wall", "-Wextra", "-I.",
+            "visa_emulator.c", "visa_instructions.c", "visa_main.c",
+            "-o", "visa_c_runner"
+        ]
+        comp_proc = subprocess.run(compile_cmd, cwd=args.out_dir, capture_output=True, text=True)
+        if comp_proc.returncode != 0:
+            if HAS_RICH:
+                console.print(Panel(comp_proc.stderr, title="[bold red]C11 Compiler Error[/bold red]", border_style="red"))
+            else:
+                print("C11 Compilation Failed:\n" + comp_proc.stderr)
+            return 1
+
+        run_proc = subprocess.run(["./visa_c_runner"], cwd=args.out_dir, capture_output=True, text=True)
+        if HAS_RICH:
+            console.print(Panel(
+                run_proc.stdout + run_proc.stderr,
+                title="[bold green]Pure C11 Vector Emulator Verification Trace[/bold green]",
+                border_style="green" if run_proc.returncode == 0 else "red"
+            ))
+        else:
+            print(run_proc.stdout + run_proc.stderr)
+        return run_proc.returncode
+    else:
+        print(f"Generated Pure C11 emulator in {args.out_dir} from {args.file}")
+        return 0
 
 
 def run_pipeline_cmd(args: argparse.Namespace) -> int:
@@ -58,7 +103,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     else:
         print(f"=== Synthesizing {args.name} ({args.num_insts} insts, VLEN={args.vlen}) ===")
 
-    _, _, _, _, pipeline_use_case, _, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     result = pipeline_use_case.execute(
         name=args.name,
         num_instructions=args.num_insts,
@@ -105,7 +150,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
 
 
 def run_synthesize_cmd(args: argparse.Namespace) -> int:
-    gen_use_case, sail_writer, _, _, _, _, _ = build_composition_root()
+    gen_use_case, sail_writer, _, _, _, _, _, _ = build_composition_root()
     spec = gen_use_case.generate(
         name=args.name,
         num_instructions=args.num_insts,
@@ -120,7 +165,7 @@ def run_synthesize_cmd(args: argparse.Namespace) -> int:
 
 def run_parse_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, _, _, sail_parser, _ = build_composition_root()
+    _, _, _, _, _, _, sail_parser, _ = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -153,7 +198,7 @@ def run_parse_cmd(args: argparse.Namespace) -> int:
 
 def run_compile_sail_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, cpp_emitter, compiler_runner, _, sail_parser, _ = build_composition_root()
+    _, _, cpp_emitter, _, compiler_runner, _, sail_parser, _ = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -180,7 +225,7 @@ def run_compile_sail_cmd(args: argparse.Namespace) -> int:
 
 def run_assemble_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, _, _, sail_parser, assembler = build_composition_root()
+    _, _, _, _, _, _, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.spec):
         print(f"Error: spec file not found '{args.spec}'")
@@ -293,6 +338,13 @@ def main() -> None:
     exec_parser.add_argument("--emu-dir", default="generated_emulator", help="Path to emulator directory containing visa_test_runner")
     exec_parser.add_argument("--hex", nargs="*", help="Direct list of hex words to execute (e.g. 0x0220a1d7)")
 
+    # Compile-C command (Direct Sail -> Pure C11 Emulator)
+    cc_parser = subparsers.add_parser("compile-c", help="Parse a Sail (.sail) file and generate Pure C11 emulator")
+    cc_parser.add_argument("file", help="Path to .sail specification file")
+    cc_parser.add_argument("--name", default="Parsed_C_ISA", help="Name for the ISA")
+    cc_parser.add_argument("-o", "--out-dir", default="c_emulator", help="Output directory for C11 emulator")
+    cc_parser.add_argument("--no-compile", action="store_true", help="Skip C compilation")
+
     args = parser.parse_args()
     if args.command == "pipeline":
         sys.exit(run_pipeline_cmd(args))
@@ -302,6 +354,8 @@ def main() -> None:
         sys.exit(run_parse_cmd(args))
     elif args.command == "compile-sail":
         sys.exit(run_compile_sail_cmd(args))
+    elif args.command == "compile-c":
+        sys.exit(run_compile_c_cmd(args))
     elif args.command == "assemble":
         sys.exit(run_assemble_cmd(args))
     elif args.command == "exec-bytecode":
