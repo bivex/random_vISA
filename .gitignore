@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C / C++ build artifacts
+*.o
+*.obj
+*.so
+*.dylib
+*.a
+*.exe
+*.out
+visa_test_runner
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary generated test output directories
+test_output/
+
+# IDE / OS specific
+.DS_Store
+.idea/
+.vscode/
+*.swp
