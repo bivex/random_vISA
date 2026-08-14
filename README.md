@@ -1,23 +1,23 @@
 # Random Sail (V-ISA) -> C++ Emulator Generator
 
-Генератор случайных спецификаций векторных расширений RISC-V / V-ISA на формальном языке **Sail** с автоматической кодогенерацией быстрых **C++20 эмуляторов**, построенный на принципах **Гексагональной архитектуры (Ports & Adapters)** и **Domain-Driven Design (DDD)**.
+A synthesizer for randomized RISC-V Vector Extensions / Vector ISAs (V-ISA) specified in the formal **Sail** specification language with automatic code generation of high-performance **C++20 emulators**, built using **Hexagonal Architecture (Ports & Adapters)** and **Domain-Driven Design (DDD)** principles.
 
 ---
 
-## 📚 Документация
+## 📚 Documentation
 
-- [🏛 Архитектура и DDD дизайн](docs/ARCHITECTURE.md) — детальное описание слоев Домена, Портов, Адаптеров и Use Cases.
-- [⛵ Sail спецификация и ANTLR4 грамматика](docs/SAIL_SPECIFICATION.md) — структура языка Sail, AST и интеграция ANTLR4 парсера.
-- [⚡ C++20 Эмулятор](docs/CPP_EMULATOR.md) — регистровый файл, CSR, битовый декодер и защита от Undefined Behavior (UB).
-- [🔧 Справочник команд CLI](docs/CLI_REFERENCE.md) — опции и примеры команд `pipeline`, `synthesize`, `parse`, `compile-sail`.
+- [🏛 Architecture & DDD Design](docs/ARCHITECTURE.md) — In-depth breakdown of Domain, Application Use Cases, Ports, and Adapters.
+- [⛵ Sail Specification & ANTLR4 Grammar](docs/SAIL_SPECIFICATION.md) — Sail language syntax, AST model, and ANTLR4 parser integration.
+- [⚡ C++20 Emulator Architecture](docs/CPP_EMULATOR.md) — Register file (`v0-v31`), bitfield decoder, and Undefined Behavior (UB) safety mechanisms.
+- [🔧 CLI Reference Guide](docs/CLI_REFERENCE.md) — Detailed options and examples for `pipeline`, `synthesize`, `parse`, and `compile-sail`.
 
 ---
 
-## 🏛 Архитектура проекта (Hexagonal + DDD)
+## 🏛 Project Architecture (Hexagonal + DDD)
 
 ```
 random_visa/
-├── domain/                         # DOMAIN LAYER (Чистая бизнес-логика без внешних зависимостей)
+├── domain/                         # DOMAIN LAYER (Pure business logic, zero framework dependencies)
 │   ├── model/                      # Entities, Value Objects, Aggregates
 │   │   ├── types.py                # SEW, LMUL, ElementKind, BinaryOp, UnaryOp, InstructionFormat
 │   │   ├── vector_config.py        # VectorConfig (VLEN, ELEN, max_vl, tail/mask policies)
@@ -25,45 +25,45 @@ random_visa/
 │   │   ├── instruction.py          # VectorInstruction Aggregate Root
 │   │   └── isa_spec.py             # VectorIsaSpec Aggregate Root
 │   ├── services/                   # Domain Services
-│   │   └── random_generator.py     # Синтез валидных случайных векторных инструкций
+│   │   └── random_generator.py     # Randomized non-colliding V-ISA synthesizer
 │   ├── events/                     # Domain Events
 │   │   └── events.py               # InstructionSynthesizedEvent, IsaSpecCompletedEvent
-│   └── ports/                      # Ports (Интерфейсы взаимодействия)
+│   └── ports/                      # Ports (Decoupled interfaces)
 │       ├── inbound/                # Driving Ports (Use Cases)
 │       │   └── ports.py            # GenerateSpecPort, EmitEmulatorPort, RunPipelinePort, SailParserPort
-│       └── outbound/               # Driven Ports (SPI / Инфраструктура)
+│       └── outbound/               # Driven Ports (SPI / Infrastructure)
 │           └── ports.py            # SailSpecWriterPort, CppCodeEmitterPort, CompilerRunnerPort
 │
-├── application/                    # APPLICATION LAYER (Оркестрация и CQRS)
-│   ├── dtos.py                     # DTO запросов и результатов
-│   └── use_cases/                  # Реализация Use Cases
+├── application/                    # APPLICATION LAYER (Orchestration & Use Cases)
+│   ├── dtos.py                     # Request / Response DTOs
+│   └── use_cases/                  # Use Case Implementations
 │       └── pipeline.py             # GenerateRandomVisaUseCase, EmitCppEmulatorUseCase, RunFullPipelineUseCase
 │
-├── adapters/                       # ADAPTERS LAYER (Реализация портов)
-│   ├── inbound/                    # Driving Adapters (Входные точки)
-│   │   ├── cli/main.py             # CLI-интерфейс на Rich / Argparse
+├── adapters/                       # ADAPTERS LAYER (Port Implementations)
+│   ├── inbound/                    # Driving Adapters
+│   │   ├── cli/main.py             # Rich & Argparse CLI Interface
 │   │   └── parser/                 # ANTLR4 Sail Parser Adapter
 │   │       ├── antlr/Sail.g4
 │   │       └── sail_antlr_adapter.py
-│   └── outbound/                   # Driven Adapters (Выходные адаптеры)
-│       ├── sail/                   # Запись формальных спецификаций Sail (.sail)
+│   └── outbound/                   # Driven Adapters
+│       ├── sail/                   # Sail Specification File Writer (.sail)
 │       │   └── sail_file_adapter.py
-│       ├── cpp_codegen/            # Генератор C++20 эмулятора (шаблоны Jinja2)
+│       ├── cpp_codegen/            # C++20 Emulator Project Code Generator (Jinja2)
 │       │   └── cpp_emitter_adapter.py
-│       └── compiler/               # Clang++/GCC компилятор и запуск верификационных тестов
+│       └── compiler/               # Clang++/GCC Compiler and Verification Test Runner
 │           └── clang_runner_adapter.py
 │
-└── tests/                          # Модульные и интеграционные тесты
+└── tests/                          # Unit and Integration Test Suite
     ├── unit/
     └── integration/
 ```
 
 ---
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-### 1. Запуск полного пайплайна через CLI
-Сгенерировать случайную векторную спецификацию из 12 инструкций, экспортировать Sail-файл, сгенерировать C++20 эмулятор и проверить выполнение:
+### 1. Run the Full End-to-End Pipeline
+Synthesize a random 12-instruction vector ISA, export `.sail` file, generate a standalone C++20 emulator, compile with `clang++`, and verify:
 
 ```bash
 python3 -m random_visa.adapters.inbound.cli.main pipeline \
@@ -74,15 +74,15 @@ python3 -m random_visa.adapters.inbound.cli.main pipeline \
   --out-dir generated_emulator
 ```
 
-### 2. Парсинг любого файла `.sail` через ANTLR4
-Распарсить формальный файл спецификации Sail в доменную модель:
+### 2. Parse any `.sail` File via ANTLR4
+Parse a Sail formal specification file into the domain model and inspect instruction encodings:
 
 ```bash
 python3 -m random_visa.adapters.inbound.cli.main parse generated_emulator/rvv_custom_isa.sail
 ```
 
-### 3. Прямая трансляция Sail -> C++20 эмулятор
-Скомпилировать существующий файл `.sail` в автономный проект эмулятора C++:
+### 3. Direct Translation: Sail -> C++20 Emulator
+Compile an existing `.sail` file into a C++20 emulator project and execute the verification suite:
 
 ```bash
 python3 -m random_visa.adapters.inbound.cli.main compile-sail \
@@ -90,19 +90,19 @@ python3 -m random_visa.adapters.inbound.cli.main compile-sail \
   --out-dir parsed_cpp_emulator
 ```
 
-### 4. Запуск тестов
+### 4. Run Test Suite
 ```bash
 python3 -m pytest -v
 ```
 
 ---
 
-## 🧩 Компоненты генерируемого C++ эмулятора
+## 🧩 Generated C++ Emulator Components
 
-В директорию сборки генерируется полный автономный C++20 проект:
-- `isa_state.hpp`: Регистровый файл векторов `v0`..`v31` (параметризуемый `VLEN`), скалярные регистры `x0`..`x31`, CSR (`vl`, `vtype`, `vstart`, `vxrm`).
-- `decoder.hpp`: Табличный и побитовый декодер инструкций по `funct6`, `funct3`, `opcode`.
-- `instructions.hpp` / `instructions.cpp`: Реализация семантики инструкций (цикл по `vl`, проверка маскирования `vm` и `v0`).
-- `emulator.hpp`: Главный класс эмулятора с методами `step()` и `run_program()`.
-- `main.cpp`: Тестовый стенд верификации сгенерированных инструкций на тестовых векторах.
-- `CMakeLists.txt`: Конфигурация сборки.
+The generated emulator project contains:
+- `isa_state.hpp`: Vector register file (`v0`..`v31` configurable by `VLEN`), scalar registers (`x0`..`x31`), CSR state (`vl`, `vtype`, `vstart`, `vxrm`).
+- `decoder.hpp`: Bitfield table & mask decoder matching 32-bit words to `(opcode, funct3, funct6)`.
+- `instructions.hpp` / `instructions.cpp`: Vector execution loops, masking checks (`vm`, `v0`), and UB-safe arithmetic.
+- `emulator.hpp`: Vector emulator execution engine (`step()`, `run_program()`).
+- `main.cpp`: Standalone verification test harness running synthesized instructions on test vectors.
+- `CMakeLists.txt`: Standard CMake build file.
