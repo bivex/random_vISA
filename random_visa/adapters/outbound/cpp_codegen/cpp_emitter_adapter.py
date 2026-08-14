@@ -362,17 +362,40 @@ public:
 "main.cpp": r"""#include "emulator.hpp"
 #include "decoder.hpp"
 #include <iostream>
+#include <fstream>
 #include <vector>
+#include <string>
+#include <sstream>
 #include <cassert>
 
 using namespace visa_emulator;
 
-int main() {
-    std::cout << "============================================================\n";
-    std::cout << "Starting Vector ISA ({{ spec.name }}) Emulator Verification Suite\n";
-    std::cout << "VLEN = " << VLEN << " bits, Num VRegs = " << NUM_VREGS << "\n";
-    std::cout << "============================================================\n";
+void run_custom_bytecode(VectorEmulator& emu, const std::vector<uint32_t>& program) {
+    std::cout << "Executing Bytecode Program (" << program.size() << " instructions)...\n";
+    for (size_t idx = 0; idx < program.size(); ++idx) {
+        uint32_t word = program[idx];
+        DecodedInstruction dec = Decoder::decode(word);
+        std::cout << "  [" << idx + 1 << "] PC=0x" << std::hex << emu.state.csr.pc
+                  << " Word=0x" << word << " (" << dec.mnemonic << ")... " << std::dec;
+        bool ok = emu.step(word);
+        if (ok) {
+            std::cout << "OK -> vd (v" << static_cast<int>(dec.vd) << "): [ ";
+            for (size_t elem = 0; elem < static_cast<size_t>(emu.state.csr.vl); ++elem) {
+                std::cout << emu.state.vregs.get_elem<int32_t>(dec.vd, elem) << " ";
+            }
+            std::cout << "]\n";
+            emu.state.csr.pc += 4;
+        } else {
+            std::cout << "DECODE/EXECUTION FAILED!\n";
+            return;
+        }
+    }
 
+    std::cout << "\n[Final Vector Register File Dump]:\n";
+    emu.state.vregs.dump(std::cout);
+}
+
+int main(int argc, char** argv) {
     VectorEmulator emu;
     emu.reset();
     emu.state.csr.vl = 4; // Set vector length to 4 elements (32-bit each)
@@ -384,6 +407,40 @@ int main() {
     }
     emu.state.set_xreg(1, 5); // x1 = 5
 
+    // Check for --bin <filename> argument
+    if (argc >= 3 && std::string(argv[1]) == "--bin") {
+        std::string filename = argv[2];
+        std::ifstream file(filename, std::ios::binary);
+        if (!file.is_open()) {
+            std::cerr << "Error: cannot open binary bytecode file " << filename << "\n";
+            return 1;
+        }
+        std::vector<uint32_t> program;
+        uint32_t word;
+        while (file.read(reinterpret_cast<char*>(&word), sizeof(uint32_t))) {
+            program.push_back(word);
+        }
+        run_custom_bytecode(emu, program);
+        return 0;
+    }
+
+    // Check for --hex <word1> <word2> ... argument
+    if (argc >= 3 && std::string(argv[1]) == "--hex") {
+        std::vector<uint32_t> program;
+        for (int i = 2; i < argc; ++i) {
+            uint32_t word = static_cast<uint32_t>(std::stoul(argv[i], nullptr, 0));
+            program.push_back(word);
+        }
+        run_custom_bytecode(emu, program);
+        return 0;
+    }
+
+    // Default verification suite
+    std::cout << "============================================================\n";
+    std::cout << "Starting Vector ISA ({{ spec.name }}) Emulator Verification Suite\n";
+    std::cout << "VLEN = " << VLEN << " bits, Num VRegs = " << NUM_VREGS << "\n";
+    std::cout << "============================================================\n";
+
     std::cout << "[Initial Register State]\n";
     std::cout << "v1: ";
     for (size_t i = 0; i < 4; ++i) std::cout << emu.state.vregs.get_elem<int32_t>(1, i) << " ";
@@ -391,7 +448,6 @@ int main() {
     for (size_t i = 0; i < 4; ++i) std::cout << emu.state.vregs.get_elem<int32_t>(2, i) << " ";
     std::cout << "\nx1: " << emu.state.get_xreg(1) << "\n\n";
 
-    // Test each synthesized instruction
     std::vector<uint32_t> test_words = {
 {% for inst in instructions %}
         // {{ inst.mnemonic }} (funct6={{ inst.funct6 }}, funct3={{ inst.funct3 }})
