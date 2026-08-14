@@ -59,7 +59,7 @@ def test_cli_pipeline_and_exec_bytecode(tmp_path):
     vbc_file = str(tmp_path / "prog.vbc")
 
     # Read the sail file to find a valid mnemonic
-    gen_use_case, sail_writer, _, _, _, _, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     spec = sail_parser.parse_sail_file(sail_file)
     first_inst = spec.instructions[0]
 
@@ -105,3 +105,27 @@ def test_cli_compile_c(tmp_path):
     ret_c = run_compile_c_cmd(args_c)
     assert ret_c == 0
     assert os.path.exists(os.path.join(c_out_dir, "visa_c_runner"))
+
+
+def test_cli_compile_pydrofoil(tmp_path):
+    from random_visa.adapters.inbound.cli.main import run_compile_pydrofoil_cmd
+    sail_path = str(tmp_path / "test_pydrofoil.sail")
+    pyd_out_dir = str(tmp_path / "pyd_out")
+    args_synth = argparse.Namespace(
+        name="Pyd_CLI_ISA",
+        num_insts=4,
+        vlen=128,
+        seed=400,
+        out_file=sail_path,
+    )
+    run_synthesize_cmd(args_synth)
+
+    args_pyd = argparse.Namespace(
+        file=sail_path,
+        name="Pyd_CLI_ISA",
+        out_dir=pyd_out_dir,
+        no_run=False,
+    )
+    ret_pyd = run_compile_pydrofoil_cmd(args_pyd)
+    assert ret_pyd == 0
+    assert os.path.exists(os.path.join(pyd_out_dir, "pydrofoil_main.py"))

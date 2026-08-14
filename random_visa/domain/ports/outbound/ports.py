@@ -27,6 +27,30 @@ class CppCodeEmitterPort(ABC):
         pass
 
 
+class CCodeEmitterPort(ABC):
+    """Port for generating Pure C11 emulator source code artifacts from an ISA Spec."""
+    @abstractmethod
+    def emit_c_project(
+        self,
+        spec: VectorIsaSpec,
+        destination_dir: str,
+    ) -> List[str]:
+        """Emits all C11 emulator files (headers, sources, test suite, Makefile)."""
+        pass
+
+
+class PydrofoilCodeEmitterPort(ABC):
+    """Port for generating Pydrofoil JIT emulator modules from an ISA Spec."""
+    @abstractmethod
+    def emit_pydrofoil_project(
+        self,
+        spec: VectorIsaSpec,
+        destination_dir: str,
+    ) -> List[str]:
+        """Emits Pydrofoil Python/RPython emulator files (state, decoder, instructions, runner)."""
+        pass
+
+
 class CompilerRunnerPort(ABC):
     """Port for compiling and executing generated C++ emulator test harness."""
     @abstractmethod

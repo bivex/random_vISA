@@ -27,6 +27,7 @@ from random_visa.adapters.inbound.parser.sail_antlr_adapter import AntlrSailPars
 
 
 from random_visa.adapters.outbound.c_codegen.c_code_emitter_adapter import CCodeEmitterAdapter
+from random_visa.adapters.outbound.pydrofoil.pydrofoil_emitter_adapter import PydrofoilEmitterAdapter
 
 
 def build_composition_root():
@@ -36,6 +37,7 @@ def build_composition_root():
     sail_writer = SailFileAdapter()
     cpp_emitter = CppEmulatorEmitterAdapter()
     c_emitter = CCodeEmitterAdapter()
+    pydrofoil_emitter = PydrofoilEmitterAdapter()
     compiler_runner = ClangCompilerRunnerAdapter()
     sail_parser = AntlrSailParserAdapter()
     assembler = VectorAssemblerService()
@@ -46,12 +48,45 @@ def build_composition_root():
         cpp_emitter=cpp_emitter,
         compiler_runner=compiler_runner,
     )
-    return gen_use_case, sail_writer, cpp_emitter, c_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+    return gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+
+
+def run_compile_pydrofoil_cmd(args: argparse.Namespace) -> int:
+    console = Console() if HAS_RICH else None
+    _, _, _, _, pydrofoil_emitter, _, _, sail_parser, _ = build_composition_root()
+
+    if not os.path.exists(args.file):
+        print(f"Error: file not found '{args.file}'")
+        return 1
+
+    spec = sail_parser.parse_sail_file(args.file, spec_name=args.name)
+    emitted = pydrofoil_emitter.emit_pydrofoil_project(spec, args.out_dir)
+
+    if not args.no_run:
+        runner_path = os.path.join(args.out_dir, "pydrofoil_main.py")
+        run_proc = subprocess.run([sys.executable, "-m", f"{os.path.basename(args.out_dir)}.pydrofoil_main"], cwd=os.path.dirname(os.path.abspath(args.out_dir)) or ".", capture_output=True, text=True)
+        if run_proc.returncode != 0:
+            # Fallback direct execution
+            run_proc = subprocess.run([sys.executable, runner_path], cwd=args.out_dir, capture_output=True, text=True)
+
+        if HAS_RICH:
+            console.print(Panel(
+                run_proc.stdout + run_proc.stderr,
+                title="[bold green]Pydrofoil JIT Vector Emulator Verification Trace[/bold green]",
+                border_style="green" if run_proc.returncode == 0 else "red"
+            ))
+        else:
+            print(run_proc.stdout + run_proc.stderr)
+        return run_proc.returncode
+    else:
+        print(f"Generated Pydrofoil JIT emulator in {args.out_dir} from {args.file}")
+        return 0
+
 
 
 def run_compile_c_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, c_emitter, _, _, sail_parser, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -103,7 +138,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     else:
         print(f"=== Synthesizing {args.name} ({args.num_insts} insts, VLEN={args.vlen}) ===")
 
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     result = pipeline_use_case.execute(
         name=args.name,
         num_instructions=args.num_insts,
@@ -150,7 +185,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
 
 
 def run_synthesize_cmd(args: argparse.Namespace) -> int:
-    gen_use_case, sail_writer, _, _, _, _, _, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     spec = gen_use_case.generate(
         name=args.name,
         num_instructions=args.num_insts,
@@ -165,7 +200,7 @@ def run_synthesize_cmd(args: argparse.Namespace) -> int:
 
 def run_parse_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, _, _, _, sail_parser, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -198,7 +233,7 @@ def run_parse_cmd(args: argparse.Namespace) -> int:
 
 def run_compile_sail_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, cpp_emitter, _, compiler_runner, _, sail_parser, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -225,7 +260,7 @@ def run_compile_sail_cmd(args: argparse.Namespace) -> int:
 
 def run_assemble_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, _, _, _, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.spec):
         print(f"Error: spec file not found '{args.spec}'")
@@ -345,6 +380,13 @@ def main() -> None:
     cc_parser.add_argument("-o", "--out-dir", default="c_emulator", help="Output directory for C11 emulator")
     cc_parser.add_argument("--no-compile", action="store_true", help="Skip C compilation")
 
+    # Compile-Pydrofoil command (Direct Sail -> Pydrofoil JIT / Python Emulator)
+    cp_parser = subparsers.add_parser("compile-pydrofoil", help="Parse a Sail (.sail) file and generate Pydrofoil JIT emulator")
+    cp_parser.add_argument("file", help="Path to .sail specification file")
+    cp_parser.add_argument("--name", default="Parsed_Pydrofoil_ISA", help="Name for the ISA")
+    cp_parser.add_argument("-o", "--out-dir", default="pydrofoil_emulator", help="Output directory for Pydrofoil emulator")
+    cp_parser.add_argument("--no-run", action="store_true", help="Skip test execution")
+
     args = parser.parse_args()
     if args.command == "pipeline":
         sys.exit(run_pipeline_cmd(args))
@@ -356,6 +398,8 @@ def main() -> None:
         sys.exit(run_compile_sail_cmd(args))
     elif args.command == "compile-c":
         sys.exit(run_compile_c_cmd(args))
+    elif args.command == "compile-pydrofoil":
+        sys.exit(run_compile_pydrofoil_cmd(args))
     elif args.command == "assemble":
         sys.exit(run_assemble_cmd(args))
     elif args.command == "exec-bytecode":
