@@ -216,6 +216,14 @@ int sc_main(int ac, char *av[]) {
         proc1.dec_cache_size = 1048576;
         proc1.init_dec_cache();
 
+        // Zero-initialize all register banks
+        for (int i = 0; i < {{ config.num_vregs }}; ++i) {
+            proc1.VRB.write(i, 0);
+        }
+        for (int i = 0; i < 32; ++i) {
+            proc1.XRB.write(i, 0);
+        }
+
         // Setup test register values
         proc1.VRB.write(1, 10);
         proc1.VRB.write(2, 2);
@@ -239,15 +247,18 @@ int sc_main(int ac, char *av[]) {
                           << " at base 0x100" << std::endl;
             }
         } else {
-            // Load test sequence into DM (base 0x100)
+            // Load all synthesized test instructions into DM (base 0x100)
             uint32_t addr = 0x100;
-{% for inst in instructions[:8] %}
+{% for inst in instructions %}
             // Instruction {{ inst.mnemonic }}
-            uint32_t w{{ loop.index0 }} = (({{ inst.funct6 }} & 0x3F) << 26) | (1 << 25) | (2 << 20) | ({% if inst.format.value == "OPIVX" %}1{% elif inst.format.value == "OPIVI" %}5{% else %}1{% endif %} << 15) | ({{ inst.funct3 }} << 12) | (({{ loop.index0 }} + 4) << 7) | 0x57;
+            uint32_t w{{ loop.index0 }} = (({{ inst.funct6 }} & 0x3F) << 26) | (1 << 25) | (2 << 20) | ({% if inst.format.value == "OPIVX" %}1{% elif inst.format.value == "OPIVI" %}5{% else %}1{% endif %} << 15) | ({{ inst.funct3 }} << 12) | (({{ (loop.index0 % (config.num_vregs - 4)) + 4 }}) << 7) | 0x57;
             write_word(proc1, addr, w{{ loop.index0 }});
             addr += 4;
 {% endfor %}
-            std::cout << "  Loaded " << ((addr - 0x100) / 4) << " synthesized vector instructions into Memory DM." << std::endl;
+            // Append halt sentinel
+            write_word(proc1, addr, 0);
+            addr += 4;
+            std::cout << "  Loaded " << ((addr - 0x100) / 4 - 1) << " synthesized vector instructions into Memory DM." << std::endl;
         }
 
         proc1.set_ac_pc(0x100);
