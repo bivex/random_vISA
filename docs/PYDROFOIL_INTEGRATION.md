@@ -22,16 +22,58 @@ When `compile-pydrofoil` is executed, the `PydrofoilEmitterAdapter` generates a 
 
 ---
 
-## 3. CLI Usage
+## 3. Submodule & Internal Architecture (`third_party/pydrofoil`)
 
-### 3.1. Compile Sail to Pydrofoil Emulator & Run Verification
+The official [**Pydrofoil**](https://github.com/pydrofoil/pydrofoil) codebase is included as a git submodule in:
+[`third_party/pydrofoil/`](file:///Volumes/External/Code/random_vISA/third_party/pydrofoil)
+
+### Key Submodule Components:
+1. **`pydrofoil/parse.py`**:
+   - Parses Sail Jib IR (`.ir` 3-address code text format) into internal AST nodes (`ast.Definition`, `ast.Function`, `ast.Instruction`).
+2. **`pydrofoil/makecode.py` (`parse_and_make_code`)**:
+   - Specializes, inlines, and compiles Jib IR into RPython/Python AST with SSA representation.
+3. **`pydrofoil/bitvector.py`**:
+   - Highly optimized bitvector operations (`SmallBitVector`, `BigBitVector`).
+4. **`riscv/`**:
+   - Pre-generated RISC-V Sail IR models (`riscv_model_RV32.ir`, `riscv_model_RV64.ir`) and support library (`supportcoderiscv.py`).
+
+---
+
+## 4. Dual-Mode Execution Model in `random_vISA`
+
+Because the full RPython meta-tracing JIT framework is based on the PyPy2/RPython bootstrap toolchain, `random_vISA` provides a **Dual-Mode** architecture:
+
+```
+                          ┌───────────────────────────┐
+                          │   Sail V-ISA Specification │
+                          │     (hypervector_isa.sail)│
+                          └─────────────┬─────────────┘
+                                        │
+                         random_vISA ANTLR4 Parser & Jib IR
+                                        │
+                  ┌─────────────────────┴─────────────────────┐
+                  ▼                                           ▼
+      [Mode 1: Python 3 JIT-Ready]                 [Mode 2: PyPy2 / RPython JIT]
+        (PydrofoilEmitterAdapter)                    (third_party/pydrofoil)
+                  │                                           │
+  • Zero external dependencies               • Uses pydrofoil.makecode.parse_and_make_code
+  • Standalone v0..v31 bitvector engine       • Generates C binary with tracing JIT
+  • Runs anywhere on modern Python 3.9+       • Requires PyPy2 + RPython toolchain
+  • 16/16 instruction verification suite      • Ideal for maximum production throughput
+```
+
+---
+
+## 5. CLI Usage
+
+### 5.1. Compile Sail to Pydrofoil Emulator & Run Verification (Mode 1)
 ```bash
 python3 -m random_visa.adapters.inbound.cli.main compile-pydrofoil \
   generated_emulator/hypervector_isa.sail \
   -o generated_emulator/pydrofoil_emulator
 ```
 
-### 3.2. Run Bytecode Program on Pydrofoil Emulator
+### 5.2. Run Bytecode Program on Pydrofoil Emulator
 ```bash
 python3 generated_emulator/pydrofoil_emulator/pydrofoil_main.py \
   --bin generated_emulator/program.vbc
@@ -39,7 +81,7 @@ python3 generated_emulator/pydrofoil_emulator/pydrofoil_main.py \
 
 ---
 
-## 4. Multi-VLEN Support
+## 6. Multi-VLEN Support
 
 The Pydrofoil generator adapts seamlessly across vector register lengths:
 - **`VLEN = 64`** (2 $\times$ 32-bit elements / register)
