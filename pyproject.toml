@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "random-visa"
+version = "0.1.0"
+description = "Hexagonal/DDD Architecture for Random Sail (V-ISA) to C++ Emulator Generation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jinja2>=3.1.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+visa-gen = "random_visa.adapters.inbound.cli.main:cli_entrypoint"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
