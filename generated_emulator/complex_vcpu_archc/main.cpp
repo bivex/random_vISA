@@ -122,12 +122,14 @@ int sc_main(int ac, char *av[]) {
 
     std::cout << "\n============================================================" << std::endl;
     std::cout << "[ArchC SystemC Register State Dump]:" << std::endl;
-    for (int r = 0; r <= 30; ++r) {
+    for (int r = 0; r < 32; ++r) {
         int32_t val = static_cast<int32_t>(proc1.VRB.read(r));
         if (val != 0 || r <= 2)
             std::cout << "  VRB[" << r << "] = " << val << std::endl;
     }
-    std::cout << "  XRB[1] = " << proc1.XRB.read(1) << std::endl;
+    for (int r = 0; r < 4; ++r) {
+        std::cout << "  XRB[" << r << "] = " << proc1.XRB.read(r) << std::endl;
+    }
     std::cout << "============================================================" << std::endl;
 
     proc1.PrintStat();

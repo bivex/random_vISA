@@ -19,10 +19,6 @@
 #include  "parsed_archc_isa_syscall.H"
 
 void* parsed_archc_isa::dispatch() {
-  //!Updating Regs for behavioral simulation.
-  if (ac_qk.need_sync()) {
-    ac_qk.sync();
-  }
   if( ac_pc >= dec_cache_size){
     cerr << "ArchC: Address out of bounds (pc=0x" << hex << ac_pc << ")." << endl;
     stop();
@@ -85,7 +81,6 @@ void* parsed_archc_isa::dispatch() {
   }
   ins_id = instr_dec->id;
 
-  ISA.cur_instr_id = ins_id;
   return instr_dec->end_rot;
 }
 
@@ -134,224 +129,192 @@ void parsed_archc_isa::behavior() {
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vclz_m_0(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vor_vi_1: // Instruction vor_vi_1
     ISA._behavior_instruction(instr_dec->F_Type_VI.funct6, instr_dec->F_Type_VI.vm, instr_dec->F_Type_VI.vs2, instr_dec->F_Type_VI.funct3, instr_dec->F_Type_VI.vd, instr_dec->F_Type_VI.opcode);
     ISA._behavior_parsed_archc_isa_Type_VI(instr_dec->F_Type_VI.funct6, instr_dec->F_Type_VI.vm, instr_dec->F_Type_VI.vs2, instr_dec->F_Type_VI.imm, instr_dec->F_Type_VI.funct3, instr_dec->F_Type_VI.vd, instr_dec->F_Type_VI.opcode);
     ISA.behavior_vor_vi_1(instr_dec->F_Type_VI.funct6, instr_dec->F_Type_VI.vm, instr_dec->F_Type_VI.vs2, instr_dec->F_Type_VI.imm, instr_dec->F_Type_VI.funct3, instr_dec->F_Type_VI.vd, instr_dec->F_Type_VI.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vxor_vx_2: // Instruction vxor_vx_2
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vxor_vx_2(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vmin_vx_3: // Instruction vmin_vx_3
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vmin_vx_3(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vsadd_vx_4: // Instruction vsadd_vx_4
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vsadd_vx_4(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vsra_vx_5: // Instruction vsra_vx_5
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vsra_vx_5(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vrem_vx_6: // Instruction vrem_vx_6
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vrem_vx_6(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vabs_m_7: // Instruction vabs_m_7
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vabs_m_7(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vclz_m_8: // Instruction vclz_m_8
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vclz_m_8(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vsrl_vx_9: // Instruction vsrl_vx_9
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vsrl_vx_9(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vcpop_m_10: // Instruction vcpop_m_10
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vcpop_m_10(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vcpop_m_11: // Instruction vcpop_m_11
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vcpop_m_11(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vrem_vv_12: // Instruction vrem_vv_12
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vrem_vv_12(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vxor_vx_13: // Instruction vxor_vx_13
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vxor_vx_13(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vmax_vx_14: // Instruction vmax_vx_14
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vmax_vx_14(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vrem_vv_15: // Instruction vrem_vv_15
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vrem_vv_15(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vxor_vx_16: // Instruction vxor_vx_16
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vxor_vx_16(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vdiv_vv_17: // Instruction vdiv_vv_17
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vdiv_vv_17(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vabs_m_18: // Instruction vabs_m_18
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vabs_m_18(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vxor_vv_19: // Instruction vxor_vv_19
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vxor_vv_19(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vclz_m_20: // Instruction vclz_m_20
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vclz_m_20(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vnot_m_21: // Instruction vnot_m_21
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vnot_m_21(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vmin_vv_22: // Instruction vmin_vv_22
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vmin_vv_22(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vcpop_m_23: // Instruction vcpop_m_23
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vcpop_m_23(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vor_vx_24: // Instruction vor_vx_24
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vor_vx_24(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vmul_vv_25: // Instruction vmul_vv_25
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vmul_vv_25(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vcpop_m_26: // Instruction vcpop_m_26
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vcpop_m_26(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vdiv_vx_27: // Instruction vdiv_vx_27
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vdiv_vx_27(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vclz_m_28: // Instruction vclz_m_28
     ISA._behavior_instruction(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA._behavior_parsed_archc_isa_Type_MVV(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
     ISA.behavior_vclz_m_28(instr_dec->F_Type_MVV.funct6, instr_dec->F_Type_MVV.vm, instr_dec->F_Type_MVV.vs2, instr_dec->F_Type_MVV.vs1, instr_dec->F_Type_MVV.funct3, instr_dec->F_Type_MVV.vd, instr_dec->F_Type_MVV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vsrl_vx_29: // Instruction vsrl_vx_29
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vsrl_vx_29(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vsadd_vv_30: // Instruction vsadd_vv_30
     ISA._behavior_instruction(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA._behavior_parsed_archc_isa_Type_VV(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
     ISA.behavior_vsadd_vv_30(instr_dec->F_Type_VV.funct6, instr_dec->F_Type_VV.vm, instr_dec->F_Type_VV.vs2, instr_dec->F_Type_VV.vs1, instr_dec->F_Type_VV.funct3, instr_dec->F_Type_VV.vd, instr_dec->F_Type_VV.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
   I_vadd_vx_31: // Instruction vadd_vx_31
     ISA._behavior_instruction(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA._behavior_parsed_archc_isa_Type_VX(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
     ISA.behavior_vadd_vx_31(instr_dec->F_Type_VX.funct6, instr_dec->F_Type_VX.vm, instr_dec->F_Type_VX.vs2, instr_dec->F_Type_VX.rs1, instr_dec->F_Type_VX.funct3, instr_dec->F_Type_VX.vd, instr_dec->F_Type_VX.opcode);
-    ac_qk.inc(time_1cycle);
     goto *dispatch();
 
 } // behavior()
@@ -443,11 +406,5 @@ void parsed_archc_isa::set_ac_pc(unsigned int value) {
 // Wrapper function to PrintStat().
 void parsed_archc_isa::PrintStat() {
   ac_arch<parsed_archc_isa_parms::ac_word, parsed_archc_isa_parms::ac_Hword>::PrintStat();
-}
-
-// Assigns value to processor frequency and updates cycle time values
-void parsed_archc_isa::set_proc_freq(unsigned int proc_freq) {
-  ac_module::set_proc_freq(proc_freq);
-  time_1cycle=sc_time(1*module_period_ns, SC_NS);
 }
 

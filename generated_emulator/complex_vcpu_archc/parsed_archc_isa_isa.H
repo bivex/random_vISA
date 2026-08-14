@@ -42,20 +42,11 @@ public:
   ac_decoder_full* decoder;
 
   parsed_archc_isa_syscall syscall;
-  int cur_instr_id;
-
   //!Constructor.
   parsed_archc_isa_isa(parsed_archc_isa_arch& ref) : parsed_archc_isa_arch_ref(ref) , syscall(ref) {
     //!Building Decoder.
     decoder = ac_decoder_full::CreateDecoder(parsed_archc_isa_isa::formats, parsed_archc_isa_isa::instructions, &ref);
   }
-
-  inline const char* get_name() { return instr_table[cur_instr_id].ac_instr_name; }
-  inline const char* get_mnemonic() { return instr_table[cur_instr_id].ac_instr_mnemonic; }
-  inline unsigned get_size() { return instr_table[cur_instr_id].ac_instr_size; };
-  inline unsigned get_cycles() { return instr_table[cur_instr_id].ac_instr_cycles; };
-  inline unsigned get_min_latency() { return instr_table[cur_instr_id].ac_instr_min_latency; };
-  inline unsigned get_max_latency() { return instr_table[cur_instr_id].ac_instr_max_latency; };
 
   inline __attribute__((always_inline)) void _behavior_instruction(uint8_t funct6, uint8_t vm, uint8_t vs2, uint8_t funct3, uint8_t vd, uint8_t opcode);
 

@@ -79,8 +79,6 @@ private:
     };
   } DecCacheItem ;
 
-  sc_time time_1cycle;
-
 public:
 
   bool has_delayed_load;
@@ -110,14 +108,11 @@ public:
     has_delayed_load = false; 
     start_up=1;
     ac_id.write(globalId++);
-    set_proc_freq(1000/module_period_ns);
   }
 
   void init_dec_cache() {
     DEC_CACHE = (DecCacheItem*) calloc(sizeof(DecCacheItem), (dec_cache_size / 4));
   }
-
-  void set_proc_freq(unsigned int proc_freq);
 
   unsigned get_ac_pc();
 
