@@ -27,11 +27,14 @@ void ac_behavior(end) {
     std::cout << "[ArchC] Simulation Completed: parsed_archc_isa" << std::endl;
 }
 
-void ac_behavior(instruction) {}
+void ac_behavior(instruction) {
+    ac_pc += 4;
+}
 void ac_behavior(Type_VV) {}
 void ac_behavior(Type_VX) {}
 void ac_behavior(Type_VI) {}
 void ac_behavior(Type_MVV) {}
+
 
 void ac_behavior(vand_vv_0) {
     int32_t op2 = static_cast<int32_t>(VRB.read(vs2));

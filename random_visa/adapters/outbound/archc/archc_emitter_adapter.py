@@ -76,11 +76,14 @@ void ac_behavior(end) {
     std::cout << "[ArchC] Simulation Completed: {{ model_name }}" << std::endl;
 }
 
-void ac_behavior(instruction) {}
+void ac_behavior(instruction) {
+    ac_pc += 4;
+}
 void ac_behavior(Type_VV) {}
 void ac_behavior(Type_VX) {}
 void ac_behavior(Type_VI) {}
 void ac_behavior(Type_MVV) {}
+
 
 {% for inst in instructions %}
 void ac_behavior({{ inst.mnemonic }}) {
@@ -168,9 +171,16 @@ const char *archc_version = "2.4.1";
 const char *archc_options = "";
 
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <systemc.h>
 #include "ac_stats_base.H"
 #include "{{ model_name }}.H"
+
+static inline void write_word({{ model_name }} &proc, uint32_t addr, uint32_t val) {
+    ac_ptr ptr(&val);
+    proc.DM.write(ptr, addr, 32);
+}
 
 int sc_main(int ac, char *av[]) {
     std::cout << "============================================================" << std::endl;
@@ -179,19 +189,80 @@ int sc_main(int ac, char *av[]) {
     std::cout << "============================================================" << std::endl;
 
     {{ model_name }} proc1("{{ model_name }}");
-    proc1.init(ac, av);
-    proc1.set_prog_args();
 
-    // Initial register state setup
-    proc1.VRB.write(1, 10);
-    proc1.VRB.write(2, 2);
-    proc1.XRB.write(1, 5);
+    bool has_app = false;
+    std::string bin_path = "";
+    for (int i = 1; i < ac; ++i) {
+        std::string arg = av[i];
+        if (arg.find("--load=") == 0) {
+            has_app = true;
+            break;
+        } else if (arg == "--" && i + 1 < ac) {
+            has_app = true;
+            break;
+        } else if (arg.find("--bin=") == 0) {
+            bin_path = arg.substr(6);
+        } else if (arg == "--bin" && i + 1 < ac) {
+            bin_path = av[++i];
+        }
+    }
 
+    if (has_app) {
+        proc1.init(ac, av);
+        proc1.set_prog_args();
+    } else {
+        std::cout << "\n[ArchC] Initializing SystemC Vector Processing Core..." << std::endl;
+        proc1.init();
+        proc1.dec_cache_size = 65536;
+        proc1.init_dec_cache();
+
+        // Setup test register values
+        proc1.VRB.write(1, 10);
+        proc1.VRB.write(2, 2);
+        proc1.XRB.write(1, 5);
+        std::cout << "  State initialized: VRB[1] = 10, VRB[2] = 2, XRB[1] = 5" << std::endl;
+
+        if (!bin_path.empty()) {
+            std::ifstream bf(bin_path, std::ios::binary);
+            if (bf.is_open()) {
+                uint32_t word = 0;
+                uint32_t addr = 0;
+                while (bf.read(reinterpret_cast<char*>(&word), 4)) {
+                    write_word(proc1, addr, word);
+                    addr += 4;
+                }
+                std::cout << "  Loaded " << (addr / 4) << " bytecode instructions from " << bin_path << std::endl;
+            }
+        } else {
+            // Load test sequence into DM
+            uint32_t addr = 0;
+{% for inst in instructions[:8] %}
+            // Instruction {{ inst.mnemonic }}
+            uint32_t w{{ loop.index0 }} = (({{ inst.funct6 }} & 0x3F) << 26) | (1 << 25) | (2 << 20) | ({% if inst.format.value == "OPIVX" %}1{% elif inst.format.value == "OPIVI" %}5{% else %}1{% endif %} << 15) | ({{ inst.funct3 }} << 12) | (({{ loop.index0 }} + 4) << 7) | 0x57;
+            write_word(proc1, addr, w{{ loop.index0 }});
+            addr += 4;
+{% endfor %}
+            std::cout << "  Loaded " << (addr / 4) << " synthesized vector instructions into Memory DM." << std::endl;
+        }
+
+        proc1.set_ac_pc(0);
+    }
+
+    std::cout << "\n[ArchC] Starting SystemC Simulation Kernel (sc_start)..." << std::endl;
     sc_start();
 
+    std::cout << "\n============================================================" << std::endl;
+    std::cout << "[ArchC SystemC Register State Dump]:" << std::endl;
+    for (int r = 0; r < 8; ++r) {
+        std::cout << "  VRB[" << r << "] = " << proc1.VRB.read(r) << std::endl;
+    }
+    for (int r = 0; r < 4; ++r) {
+        std::cout << "  XRB[" << r << "] = " << proc1.XRB.read(r) << std::endl;
+    }
+    std::cout << "============================================================" << std::endl;
+
     proc1.PrintStat();
-    std::cout << std::endl;
-    return proc1.ac_exit_status;
+    return 0;
 }
 """,
 
