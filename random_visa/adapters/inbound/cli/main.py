@@ -21,6 +21,7 @@ from random_visa.application.use_cases.pipeline import (
 from random_visa.adapters.outbound.sail.sail_file_adapter import SailFileAdapter
 from random_visa.adapters.outbound.cpp_codegen.cpp_emitter_adapter import CppEmulatorEmitterAdapter
 from random_visa.adapters.outbound.compiler.clang_runner_adapter import ClangCompilerRunnerAdapter
+from random_visa.adapters.inbound.parser.sail_antlr_adapter import AntlrSailParserAdapter
 
 
 def build_composition_root():
@@ -30,6 +31,7 @@ def build_composition_root():
     sail_writer = SailFileAdapter()
     cpp_emitter = CppEmulatorEmitterAdapter()
     compiler_runner = ClangCompilerRunnerAdapter()
+    sail_parser = AntlrSailParserAdapter()
 
     pipeline_use_case = RunFullPipelineUseCase(
         generate_use_case=gen_use_case,
@@ -37,7 +39,7 @@ def build_composition_root():
         cpp_emitter=cpp_emitter,
         compiler_runner=compiler_runner,
     )
-    return gen_use_case, sail_writer, cpp_emitter, compiler_runner, pipeline_use_case
+    return gen_use_case, sail_writer, cpp_emitter, compiler_runner, pipeline_use_case, sail_parser
 
 
 def run_pipeline_cmd(args: argparse.Namespace) -> int:
@@ -53,7 +55,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     else:
         print(f"=== Synthesizing {args.name} ({args.num_insts} insts, VLEN={args.vlen}) ===")
 
-    _, _, _, _, pipeline_use_case = build_composition_root()
+    _, _, _, _, pipeline_use_case, _ = build_composition_root()
     result = pipeline_use_case.execute(
         name=args.name,
         num_instructions=args.num_insts,
@@ -100,7 +102,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
 
 
 def run_synthesize_cmd(args: argparse.Namespace) -> int:
-    gen_use_case, sail_writer, _, _, _ = build_composition_root()
+    gen_use_case, sail_writer, _, _, _, _ = build_composition_root()
     spec = gen_use_case.generate(
         name=args.name,
         num_instructions=args.num_insts,
@@ -113,15 +115,75 @@ def run_synthesize_cmd(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_parse_cmd(args: argparse.Namespace) -> int:
+    console = Console() if HAS_RICH else None
+    _, _, _, _, _, sail_parser = build_composition_root()
+
+    if not os.path.exists(args.file):
+        print(f"Error: file not found '{args.file}'")
+        return 1
+
+    spec = sail_parser.parse_sail_file(args.file, spec_name=args.name)
+
+    if HAS_RICH:
+        table = Table(title=f"Parsed Sail Specification: {spec.name}", show_header=True, header_style="bold cyan")
+        table.add_column("Index", style="dim", width=6)
+        table.add_column("Mnemonic", style="bold green")
+        table.add_column("Format", style="yellow")
+        table.add_column("Operation", style="magenta")
+        table.add_column("Encoding (f6/f3)", style="blue")
+
+        for idx, inst in enumerate(spec.instructions, start=1):
+            op_str = inst.binary_op.name if inst.binary_op else (inst.unary_op.name if inst.unary_op else "CUSTOM")
+            enc_str = f"f6={inst.funct6:02d}, f3={inst.funct3}"
+            table.add_row(str(idx), inst.mnemonic, inst.format.value, op_str, enc_str)
+
+        console.print(table)
+        console.print(f"[bold green]Successfully parsed {len(spec.instructions)} instructions with VLEN={spec.config.vlen}b[/bold green]")
+    else:
+        print(f"Parsed {len(spec.instructions)} instructions from {args.file} (VLEN={spec.config.vlen}b)")
+        for inst in spec.instructions:
+            print(f"  - {inst.mnemonic} ({inst.format.value})")
+
+    return 0
+
+
+def run_compile_sail_cmd(args: argparse.Namespace) -> int:
+    console = Console() if HAS_RICH else None
+    _, _, cpp_emitter, compiler_runner, _, sail_parser = build_composition_root()
+
+    if not os.path.exists(args.file):
+        print(f"Error: file not found '{args.file}'")
+        return 1
+
+    spec = sail_parser.parse_sail_file(args.file, spec_name=args.name)
+    emitted = cpp_emitter.emit_emulator_project(spec, args.out_dir)
+
+    if not args.no_compile and compiler_runner:
+        comp_res = compiler_runner.compile_and_run(args.out_dir)
+        if HAS_RICH:
+            console.print(Panel(
+                comp_res.get("execution_output", "") or comp_res.get("compiler_output", ""),
+                title="[bold green]C++ Emulator Execution from Parsed Sail Spec[/bold green]",
+                border_style="green" if comp_res.get("success") else "red"
+            ))
+        else:
+            print(comp_res.get("execution_output", ""))
+        return 0 if comp_res.get("success") else 1
+    else:
+        print(f"Generated C++ emulator in {args.out_dir} from {args.file}")
+        return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="visa-gen",
-        description="Hexagonal DDD: Random Sail (V-ISA) -> C++ Emulator Generator",
+        description="Hexagonal DDD: Random Sail (V-ISA) -> ANTLR4 Parser -> C++ Emulator Generator",
     )
     subparsers = parser.add_subparsers(dest="command")
 
     # Pipeline command
-    pipe_parser = subparsers.add_parser("pipeline", help="Run full synthesis and generation pipeline")
+    pipe_parser = subparsers.add_parser("pipeline", help="Run full synthesis, Sail export, and C++ generation")
     pipe_parser.add_argument("--name", default="RVV_Random_ISA", help="Name of synthesized ISA")
     pipe_parser.add_argument("-n", "--num-insts", type=int, default=12, help="Number of random vector instructions")
     pipe_parser.add_argument("--vlen", type=int, default=128, help="Vector register width in bits")
@@ -137,11 +199,27 @@ def main() -> None:
     syn_parser.add_argument("--seed", type=int, default=42, help="Randomization seed")
     syn_parser.add_argument("-o", "--out-file", default="", help="Output .sail file path")
 
+    # Parse command
+    parse_parser = subparsers.add_parser("parse", help="Parse any Sail (.sail) file using ANTLR4")
+    parse_parser.add_argument("file", help="Path to .sail specification file")
+    parse_parser.add_argument("--name", default="Parsed_Sail_ISA", help="Name for the parsed ISA")
+
+    # Compile-Sail command (Direct Sail -> C++ Emulator)
+    cs_parser = subparsers.add_parser("compile-sail", help="Parse a Sail (.sail) file and generate C++ emulator")
+    cs_parser.add_argument("file", help="Path to .sail specification file")
+    cs_parser.add_argument("--name", default="Parsed_Sail_ISA", help="Name for the ISA")
+    cs_parser.add_argument("-o", "--out-dir", default="parsed_emulator", help="Output directory for C++ emulator")
+    cs_parser.add_argument("--no-compile", action="store_true", help="Skip compilation")
+
     args = parser.parse_args()
     if args.command == "pipeline":
         sys.exit(run_pipeline_cmd(args))
     elif args.command == "synthesize":
         sys.exit(run_synthesize_cmd(args))
+    elif args.command == "parse":
+        sys.exit(run_parse_cmd(args))
+    elif args.command == "compile-sail":
+        sys.exit(run_compile_sail_cmd(args))
     else:
         parser.print_help()
         sys.exit(1)

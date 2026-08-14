@@ -43,3 +43,11 @@ class RunPipelinePort(ABC):
         compile_and_test: bool = True,
     ) -> Dict[str, Any]:
         pass
+
+
+class SailParserPort(ABC):
+    """Port for parsing Sail specification source code into domain VectorIsaSpec AST."""
+    @abstractmethod
+    def parse_sail_source(self, source_text: str, spec_name: str = "Parsed_Sail_ISA") -> VectorIsaSpec:
+        pass
+

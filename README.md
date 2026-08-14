@@ -63,7 +63,23 @@ python3 -m random_visa.adapters.inbound.cli.main pipeline \
   --out-dir generated_emulator
 ```
 
-### 2. Запуск тестов
+### 2. Парсинг любого файла `.sail` через ANTLR4
+Распарсить формальный файл спецификации Sail в доменную модель:
+
+```bash
+python3 -m random_visa.adapters.inbound.cli.main parse generated_emulator/rvv_custom_isa.sail
+```
+
+### 3. Прямая трансляция Sail -> C++20 эмулятор
+Скомпилировать существующий файл `.sail` в автономный проект эмулятора C++:
+
+```bash
+python3 -m random_visa.adapters.inbound.cli.main compile-sail \
+  generated_emulator/rvv_custom_isa.sail \
+  --out-dir parsed_cpp_emulator
+```
+
+### 4. Запуск тестов
 ```bash
 python3 -m pytest -v
 ```
