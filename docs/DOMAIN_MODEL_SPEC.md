@@ -74,8 +74,11 @@ classDiagram
    - `0 <= funct6 <= 63` (6-bit field).
    - `0 <= funct3 <= 7` (3-bit field).
    - `opcode == 0x57` (standard RISC-V vector opcode).
-   - Encoding packing formula:
-     $$\text{word} = (\text{funct6} \ll 26) \mid (\text{vm} \ll 25) \mid (\text{vs2} \ll 20) \mid (\text{vs1\_or\_rs1\_or\_imm} \ll 15) \mid (\text{funct3} \ll 12) \mid (\text{vd} \ll 7) \mid \text{opcode}$$
+   - **Encoding bitwise packing formula**:
+     ```c
+     word = (funct6 << 26) | (vm << 25) | (vs2 << 20) | (vs1_or_imm << 15) | (funct3 << 12) | (vd << 7) | opcode;
+     ```
+     $$\text{word} = (\text{funct6} \ll 26) \mid (\text{vm} \ll 25) \mid (\text{vs2} \ll 20) \mid (\text{op1} \ll 15) \mid (\text{funct3} \ll 12) \mid (\text{vd} \ll 7) \mid \text{opcode}$$
 
 ---
 
