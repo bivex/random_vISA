@@ -240,11 +240,27 @@ void InstructionExecutor::exec_{{ inst.mnemonic }}(EmulatorState& state, const D
         elem_t result = 0;
 {% if inst.binary_op %}
     {% if inst.binary_op.name == "ADD" %}
-        result = op2 + op1;
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
     {% elif inst.binary_op.name == "SUB" %}
-        result = op2 - op1;
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) - static_cast<uint32_t>(op1));
     {% elif inst.binary_op.name == "MUL" %}
-        result = op2 * op1;
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) * static_cast<uint32_t>(op1));
+    {% elif inst.binary_op.name == "DIV" %}
+        if (op1 == 0) {
+            result = -1;
+        } else if (op2 == INT32_MIN && op1 == -1) {
+            result = INT32_MIN;
+        } else {
+            result = op2 / op1;
+        }
+    {% elif inst.binary_op.name == "REM" %}
+        if (op1 == 0) {
+            result = op2;
+        } else if (op2 == INT32_MIN && op1 == -1) {
+            result = 0;
+        } else {
+            result = op2 % op1;
+        }
     {% elif inst.binary_op.name == "AND" %}
         result = op2 & op1;
     {% elif inst.binary_op.name == "OR" %}
@@ -252,11 +268,11 @@ void InstructionExecutor::exec_{{ inst.mnemonic }}(EmulatorState& state, const D
     {% elif inst.binary_op.name == "XOR" %}
         result = op2 ^ op1;
     {% elif inst.binary_op.name == "SLL" %}
-        result = op2 << (op1 & 31);
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) << (static_cast<uint32_t>(op1) & 31u));
     {% elif inst.binary_op.name == "SRL" %}
-        result = static_cast<uint32_t>(op2) >> (op1 & 31);
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) >> (static_cast<uint32_t>(op1) & 31u));
     {% elif inst.binary_op.name == "SRA" %}
-        result = op2 >> (op1 & 31);
+        result = static_cast<elem_t>(op2 >> (static_cast<uint32_t>(op1) & 31u));
     {% elif inst.binary_op.name == "MIN" %}
         result = std::min(op2, op1);
     {% elif inst.binary_op.name == "MAX" %}
@@ -268,15 +284,15 @@ void InstructionExecutor::exec_{{ inst.mnemonic }}(EmulatorState& state, const D
         int64_t diff = static_cast<int64_t>(op2) - static_cast<int64_t>(op1);
         result = static_cast<elem_t>(std::clamp<int64_t>(diff, INT32_MIN, INT32_MAX));
     {% else %}
-        result = op2 + op1;
+        result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
     {% endif %}
 {% elif inst.unary_op %}
     {% if inst.unary_op.name == "NEG" %}
-        result = -op2;
+        result = static_cast<elem_t>(0u - static_cast<uint32_t>(op2));
     {% elif inst.unary_op.name == "NOT" %}
         result = ~op2;
     {% elif inst.unary_op.name == "ABS" %}
-        result = std::abs(op2);
+        result = (op2 == INT32_MIN) ? INT32_MIN : ((op2 < 0) ? -op2 : op2);
     {% elif inst.unary_op.name == "CLZ" %}
         result = (op2 == 0) ? 32 : __builtin_clz(static_cast<uint32_t>(op2));
     {% elif inst.unary_op.name == "CTZ" %}

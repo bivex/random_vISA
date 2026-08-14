@@ -8,7 +8,7 @@ from random_visa.domain.model.types import (
 from random_visa.domain.model.sail_ast import (
     SailFunctionDef, SailBitsType, SailVectorLoopStmt, SailIfStmt,
     SailLetStmt, SailVectorElemExpr, SailSetVectorElemStmt, SailVarExpr,
-    SailMaskCheckExpr, SailBinaryExpr, SailUnaryExpr, SailLiteralInt, SailUnitType
+    SailMaskCheckExpr, SailBinaryExpr, SailUnaryExpr, SailCallExpr, SailLiteralInt, SailUnitType
 )
 
 
@@ -74,9 +74,11 @@ class VectorInstruction:
             loop_body.append(SailLetStmt("op1", elem_vs1))
             rhs_expr = SailVarExpr("op1")
         elif self.format == InstructionFormat.OP_VX:
+            loop_body.append(SailLetStmt("rs1_val", SailCallExpr("rX", [SailVarExpr("vs1_or_imm")])))
             loop_body.append(SailLetStmt("op1", SailVarExpr("rs1_val")))
             rhs_expr = SailVarExpr("op1")
         elif self.format == InstructionFormat.OP_VI:
+            loop_body.append(SailLetStmt("simm5", SailCallExpr("sign_extend", [SailVarExpr("vs1_or_imm")])))
             loop_body.append(SailLetStmt("op1", SailVarExpr("simm5")))
             rhs_expr = SailVarExpr("op1")
         else:

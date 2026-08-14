@@ -57,3 +57,44 @@ def test_spec_collision_detection():
     )
     with pytest.raises(ValueError, match="collision"):
         spec.add_instruction(inst_collide)
+
+
+def test_spec_decode():
+    spec = VectorIsaSpec(name="TestDecodeSpec")
+    inst = VectorInstruction(
+        mnemonic="vmul_vv",
+        format=InstructionFormat.OP_VV,
+        funct6=15,
+        funct3=0,
+        binary_op=BinaryOp.MUL,
+    )
+    spec.add_instruction(inst)
+
+    encoded = inst.encode(vd=5, vs2=6, vs1_or_rs1_or_imm=7, vm=1)
+    decoded = spec.decode(encoded)
+    assert decoded is not None
+    assert decoded.mnemonic == "vmul_vv"
+    assert decoded.funct6 == 15
+
+
+def test_sail_synthesis_operands():
+    inst_vx = VectorInstruction(
+        mnemonic="vadd_vx_test",
+        format=InstructionFormat.OP_VX,
+        funct6=1,
+        funct3=4,
+        binary_op=BinaryOp.ADD,
+    )
+    sail_code = inst_vx.sail_function.to_sail()
+    assert "rX(vs1_or_imm)" in sail_code
+
+    inst_vi = VectorInstruction(
+        mnemonic="vadd_vi_test",
+        format=InstructionFormat.OP_VI,
+        funct6=2,
+        funct3=3,
+        binary_op=BinaryOp.ADD,
+    )
+    sail_code_vi = inst_vi.sail_function.to_sail()
+    assert "sign_extend(vs1_or_imm)" in sail_code_vi
+

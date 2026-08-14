@@ -23,7 +23,7 @@ from random_visa.adapters.outbound.cpp_codegen.cpp_emitter_adapter import CppEmu
 from random_visa.adapters.outbound.compiler.clang_runner_adapter import ClangCompilerRunnerAdapter
 
 
-def build_pipeline_use_case() -> RunFullPipelineUseCase:
+def build_composition_root():
     """Dependency Injection / Composition Root."""
     gen_service = RandomVisaGeneratorService()
     gen_use_case = GenerateRandomVisaUseCase(gen_service)
@@ -31,12 +31,13 @@ def build_pipeline_use_case() -> RunFullPipelineUseCase:
     cpp_emitter = CppEmulatorEmitterAdapter()
     compiler_runner = ClangCompilerRunnerAdapter()
 
-    return RunFullPipelineUseCase(
+    pipeline_use_case = RunFullPipelineUseCase(
         generate_use_case=gen_use_case,
         sail_writer=sail_writer,
         cpp_emitter=cpp_emitter,
         compiler_runner=compiler_runner,
     )
+    return gen_use_case, sail_writer, cpp_emitter, compiler_runner, pipeline_use_case
 
 
 def run_pipeline_cmd(args: argparse.Namespace) -> int:
@@ -52,8 +53,8 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     else:
         print(f"=== Synthesizing {args.name} ({args.num_insts} insts, VLEN={args.vlen}) ===")
 
-    use_case = build_pipeline_use_case()
-    result = use_case.execute(
+    _, _, _, _, pipeline_use_case = build_composition_root()
+    result = pipeline_use_case.execute(
         name=args.name,
         num_instructions=args.num_insts,
         output_dir=args.out_dir,
@@ -98,12 +99,26 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     return 0 if result.compilation_success or args.no_compile else 1
 
 
+def run_synthesize_cmd(args: argparse.Namespace) -> int:
+    gen_use_case, sail_writer, _, _, _ = build_composition_root()
+    spec = gen_use_case.generate(
+        name=args.name,
+        num_instructions=args.num_insts,
+        vlen=args.vlen,
+        seed=args.seed,
+    )
+    out_file = args.out_file or f"{args.name.lower()}.sail"
+    sail_writer.write_spec(spec, out_file)
+    print(f"Successfully generated Sail specification: {out_file} ({len(spec.instructions)} instructions)")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="visa-gen",
         description="Hexagonal DDD: Random Sail (V-ISA) -> C++ Emulator Generator",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     # Pipeline command
     pipe_parser = subparsers.add_parser("pipeline", help="Run full synthesis and generation pipeline")
@@ -114,9 +129,22 @@ def main() -> None:
     pipe_parser.add_argument("-o", "--out-dir", default="generated_emulator", help="Output directory")
     pipe_parser.add_argument("--no-compile", action="store_true", help="Skip C++ compilation and test execution")
 
+    # Synthesize command
+    syn_parser = subparsers.add_parser("synthesize", help="Synthesize Sail specification only")
+    syn_parser.add_argument("--name", default="RVV_Random_ISA", help="Name of synthesized ISA")
+    syn_parser.add_argument("-n", "--num-insts", type=int, default=12, help="Number of random vector instructions")
+    syn_parser.add_argument("--vlen", type=int, default=128, help="Vector register width in bits")
+    syn_parser.add_argument("--seed", type=int, default=42, help="Randomization seed")
+    syn_parser.add_argument("-o", "--out-file", default="", help="Output .sail file path")
+
     args = parser.parse_args()
     if args.command == "pipeline":
         sys.exit(run_pipeline_cmd(args))
+    elif args.command == "synthesize":
+        sys.exit(run_synthesize_cmd(args))
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 
 def cli_entrypoint() -> None:

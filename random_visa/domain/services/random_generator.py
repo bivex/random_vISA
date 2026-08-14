@@ -18,6 +18,8 @@ class RandomVisaGeneratorService:
         (BinaryOp.ADD, "add", [InstructionFormat.OP_VV, InstructionFormat.OP_VX, InstructionFormat.OP_VI]),
         (BinaryOp.SUB, "sub", [InstructionFormat.OP_VV, InstructionFormat.OP_VX]),
         (BinaryOp.MUL, "mul", [InstructionFormat.OP_VV, InstructionFormat.OP_VX]),
+        (BinaryOp.DIV, "div", [InstructionFormat.OP_VV, InstructionFormat.OP_VX]),
+        (BinaryOp.REM, "rem", [InstructionFormat.OP_VV, InstructionFormat.OP_VX]),
         (BinaryOp.AND, "and", [InstructionFormat.OP_VV, InstructionFormat.OP_VX, InstructionFormat.OP_VI]),
         (BinaryOp.OR, "or", [InstructionFormat.OP_VV, InstructionFormat.OP_VX, InstructionFormat.OP_VI]),
         (BinaryOp.XOR, "xor", [InstructionFormat.OP_VV, InstructionFormat.OP_VX, InstructionFormat.OP_VI]),

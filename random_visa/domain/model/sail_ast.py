@@ -161,13 +161,14 @@ class SailMaskCheckExpr(SailExpr):
 
 
 @dataclass(frozen=True)
-class SailTernaryExpr(SailExpr):
-    condition: SailExpr
-    then_expr: SailExpr
-    else_expr: SailExpr
+class SailCallExpr(SailExpr):
+    """Function invocation expression in Sail."""
+    func_name: str
+    args: List[SailExpr] = field(default_factory=list)
 
     def to_sail(self) -> str:
-        return f"(if {self.condition.to_sail()} then {self.then_expr.to_sail()} else {self.else_expr.to_sail()})"
+        args_str = ", ".join(arg.to_sail() for arg in self.args)
+        return f"{self.func_name}({args_str})"
 
 
 # --- Sail Statements ---
