@@ -51,7 +51,7 @@ int sc_main(int ac, char *av[]) {
     } else {
         std::cout << "\n[ArchC] Initializing SystemC Vector Processing Core..." << std::endl;
         proc1.init();
-        proc1.dec_cache_size = 65536;
+        proc1.dec_cache_size = 1048576;
         proc1.init_dec_cache();
 
         // Setup test register values
@@ -64,16 +64,19 @@ int sc_main(int ac, char *av[]) {
             std::ifstream bf(bin_path, std::ios::binary);
             if (bf.is_open()) {
                 uint32_t word = 0;
-                uint32_t addr = 0;
+                uint32_t addr = 0x100;  // Load above ArchC reserved syscall region (0x00–0xFF)
+                uint32_t n = 0;
                 while (bf.read(reinterpret_cast<char*>(&word), 4)) {
                     write_word(proc1, addr, word);
                     addr += 4;
+                    n++;
                 }
-                std::cout << "  Loaded " << (addr / 4) << " bytecode instructions from " << bin_path << std::endl;
+                std::cout << "  Loaded " << n << " bytecode instructions from " << bin_path
+                          << " at base 0x100" << std::endl;
             }
         } else {
-            // Load test sequence into DM
-            uint32_t addr = 0;
+            // Load test sequence into DM (base 0x100 to avoid reserved syscall stubs)
+            uint32_t addr = 0x100;
             // Instruction vand_vv_0
             uint32_t w0 = ((0 & 0x3F) << 26) | (1 << 25) | (2 << 20) | (1 << 15) | (0 << 12) | ((0 + 4) << 7) | 0x57;
             write_word(proc1, addr, w0);
@@ -109,7 +112,7 @@ int sc_main(int ac, char *av[]) {
             std::cout << "  Loaded " << (addr / 4) << " synthesized vector instructions into Memory DM." << std::endl;
         }
 
-        proc1.set_ac_pc(0);
+        proc1.set_ac_pc(0x100);
     }
 
     std::cout << "\n[ArchC] Starting SystemC Simulation Kernel (sc_start)..." << std::endl;
@@ -117,12 +120,12 @@ int sc_main(int ac, char *av[]) {
 
     std::cout << "\n============================================================" << std::endl;
     std::cout << "[ArchC SystemC Register State Dump]:" << std::endl;
-    for (int r = 0; r < 8; ++r) {
-        std::cout << "  VRB[" << r << "] = " << proc1.VRB.read(r) << std::endl;
+    for (int r = 0; r < 20; ++r) {
+        int32_t val = static_cast<int32_t>(proc1.VRB.read(r));
+        if (val != 0)
+            std::cout << "  VRB[" << r << "] = " << val << std::endl;
     }
-    for (int r = 0; r < 4; ++r) {
-        std::cout << "  XRB[" << r << "] = " << proc1.XRB.read(r) << std::endl;
-    }
+    std::cout << "  XRB[1] = " << proc1.XRB.read(1) << std::endl;
     std::cout << "============================================================" << std::endl;
 
     proc1.PrintStat();

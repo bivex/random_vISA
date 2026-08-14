@@ -213,7 +213,7 @@ int sc_main(int ac, char *av[]) {
     } else {
         std::cout << "\n[ArchC] Initializing SystemC Vector Processing Core..." << std::endl;
         proc1.init();
-        proc1.dec_cache_size = 65536;
+        proc1.dec_cache_size = 1048576;
         proc1.init_dec_cache();
 
         // Setup test register values
@@ -222,30 +222,35 @@ int sc_main(int ac, char *av[]) {
         proc1.XRB.write(1, 5);
         std::cout << "  State initialized: VRB[1] = 10, VRB[2] = 2, XRB[1] = 5" << std::endl;
 
+        // NOTE: Load base is 0x100 to avoid ArchC reserved syscall stubs at 0x00-0xFF
+        // (ac_forbidden is mapped to 0x3C by ArchC, so programs must start above that)
         if (!bin_path.empty()) {
             std::ifstream bf(bin_path, std::ios::binary);
             if (bf.is_open()) {
                 uint32_t word = 0;
-                uint32_t addr = 0;
+                uint32_t addr = 0x100;
+                uint32_t n = 0;
                 while (bf.read(reinterpret_cast<char*>(&word), 4)) {
                     write_word(proc1, addr, word);
                     addr += 4;
+                    n++;
                 }
-                std::cout << "  Loaded " << (addr / 4) << " bytecode instructions from " << bin_path << std::endl;
+                std::cout << "  Loaded " << n << " bytecode instructions from " << bin_path
+                          << " at base 0x100" << std::endl;
             }
         } else {
-            // Load test sequence into DM
-            uint32_t addr = 0;
+            // Load test sequence into DM (base 0x100)
+            uint32_t addr = 0x100;
 {% for inst in instructions[:8] %}
             // Instruction {{ inst.mnemonic }}
             uint32_t w{{ loop.index0 }} = (({{ inst.funct6 }} & 0x3F) << 26) | (1 << 25) | (2 << 20) | ({% if inst.format.value == "OPIVX" %}1{% elif inst.format.value == "OPIVI" %}5{% else %}1{% endif %} << 15) | ({{ inst.funct3 }} << 12) | (({{ loop.index0 }} + 4) << 7) | 0x57;
             write_word(proc1, addr, w{{ loop.index0 }});
             addr += 4;
 {% endfor %}
-            std::cout << "  Loaded " << (addr / 4) << " synthesized vector instructions into Memory DM." << std::endl;
+            std::cout << "  Loaded " << ((addr - 0x100) / 4) << " synthesized vector instructions into Memory DM." << std::endl;
         }
 
-        proc1.set_ac_pc(0);
+        proc1.set_ac_pc(0x100);
     }
 
     std::cout << "\n[ArchC] Starting SystemC Simulation Kernel (sc_start)..." << std::endl;
