@@ -59,7 +59,7 @@ def test_cli_pipeline_and_exec_bytecode(tmp_path):
     vbc_file = str(tmp_path / "prog.vbc")
 
     # Read the sail file to find a valid mnemonic
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     spec = sail_parser.parse_sail_file(sail_file)
     first_inst = spec.instructions[0]
 
@@ -129,3 +129,29 @@ def test_cli_compile_pydrofoil(tmp_path):
     ret_pyd = run_compile_pydrofoil_cmd(args_pyd)
     assert ret_pyd == 0
     assert os.path.exists(os.path.join(pyd_out_dir, "pydrofoil_main.py"))
+
+
+def test_cli_compile_archc(tmp_path):
+    from random_visa.adapters.inbound.cli.main import run_compile_archc_cmd
+    sail_path = str(tmp_path / "test_archc.sail")
+    archc_out_dir = str(tmp_path / "archc_out")
+    args_synth = argparse.Namespace(
+        name="ArchC_CLI_ISA",
+        num_insts=4,
+        vlen=128,
+        seed=500,
+        out_file=sail_path,
+    )
+    run_synthesize_cmd(args_synth)
+
+    args_archc = argparse.Namespace(
+        file=sail_path,
+        name="ArchC_CLI_ISA",
+        out_dir=archc_out_dir,
+        no_compile=False,
+    )
+    ret_archc = run_compile_archc_cmd(args_archc)
+    assert ret_archc == 0
+    assert os.path.exists(os.path.join(archc_out_dir, "archc_cli_isa.ac"))
+    assert os.path.exists(os.path.join(archc_out_dir, "archc_cli_isa.x"))
+

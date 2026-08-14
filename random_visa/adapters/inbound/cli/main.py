@@ -28,6 +28,7 @@ from random_visa.adapters.inbound.parser.sail_antlr_adapter import AntlrSailPars
 
 from random_visa.adapters.outbound.c_codegen.c_code_emitter_adapter import CCodeEmitterAdapter
 from random_visa.adapters.outbound.pydrofoil.pydrofoil_emitter_adapter import PydrofoilEmitterAdapter
+from random_visa.adapters.outbound.archc.archc_emitter_adapter import ArchCEmitterAdapter
 
 
 def build_composition_root():
@@ -38,6 +39,7 @@ def build_composition_root():
     cpp_emitter = CppEmulatorEmitterAdapter()
     c_emitter = CCodeEmitterAdapter()
     pydrofoil_emitter = PydrofoilEmitterAdapter()
+    archc_emitter = ArchCEmitterAdapter()
     compiler_runner = ClangCompilerRunnerAdapter()
     sail_parser = AntlrSailParserAdapter()
     assembler = VectorAssemblerService()
@@ -48,12 +50,55 @@ def build_composition_root():
         cpp_emitter=cpp_emitter,
         compiler_runner=compiler_runner,
     )
-    return gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+    return gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler
+
+
+def run_compile_archc_cmd(args: argparse.Namespace) -> int:
+    console = Console() if HAS_RICH else None
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+
+    if not os.path.exists(args.file):
+        print(f"Error: file not found '{args.file}'")
+        return 1
+
+    spec = sail_parser.parse_sail_file(args.file, spec_name=args.name)
+    emitted = archc_emitter.emit_archc_project(spec, args.out_dir)
+
+    if not args.no_compile:
+        build_script = os.path.join(args.out_dir, "build.sh")
+        run_proc = subprocess.run(["/bin/sh", "build.sh"], cwd=args.out_dir, capture_output=True, text=True)
+        if run_proc.returncode != 0:
+            if HAS_RICH:
+                console.print(Panel(run_proc.stderr + run_proc.stdout, title="[bold red]ArchC / SystemC Compilation Error[/bold red]", border_style="red"))
+            else:
+                print("ArchC Compilation Failed:\n" + run_proc.stderr + run_proc.stdout)
+            return 1
+
+        # Test run the simulator binary
+        sim_bin = os.path.join(args.out_dir, f"{spec.name.lower()}.x")
+        if os.path.exists(sim_bin):
+            sim_proc = subprocess.run([os.path.abspath(sim_bin), "--help"], cwd=args.out_dir, capture_output=True, text=True)
+            if HAS_RICH:
+                console.print(Panel(
+                    run_proc.stdout + "\n" + sim_proc.stdout + sim_proc.stderr,
+                    title="[bold green]ArchC SystemC Simulator Verification Trace[/bold green]",
+                    border_style="green"
+                ))
+            else:
+                print(run_proc.stdout + "\n" + sim_proc.stdout)
+            return 0
+        else:
+            print(f"ArchC build finished but {sim_bin} not found.")
+            return 1
+    else:
+        print(f"Generated ArchC ADL description files in {args.out_dir} from {args.file}")
+        return 0
+
 
 
 def run_compile_pydrofoil_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    _, _, _, _, pydrofoil_emitter, _, _, sail_parser, _ = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -86,7 +131,7 @@ def run_compile_pydrofoil_cmd(args: argparse.Namespace) -> int:
 
 def run_compile_c_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -138,7 +183,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
     else:
         print(f"=== Synthesizing {args.name} ({args.num_insts} insts, VLEN={args.vlen}) ===")
 
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     result = pipeline_use_case.execute(
         name=args.name,
         num_instructions=args.num_insts,
@@ -185,7 +230,7 @@ def run_pipeline_cmd(args: argparse.Namespace) -> int:
 
 
 def run_synthesize_cmd(args: argparse.Namespace) -> int:
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
     spec = gen_use_case.generate(
         name=args.name,
         num_instructions=args.num_insts,
@@ -200,7 +245,7 @@ def run_synthesize_cmd(args: argparse.Namespace) -> int:
 
 def run_parse_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -233,7 +278,7 @@ def run_parse_cmd(args: argparse.Namespace) -> int:
 
 def run_compile_sail_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.file):
         print(f"Error: file not found '{args.file}'")
@@ -260,7 +305,7 @@ def run_compile_sail_cmd(args: argparse.Namespace) -> int:
 
 def run_assemble_cmd(args: argparse.Namespace) -> int:
     console = Console() if HAS_RICH else None
-    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
+    gen_use_case, sail_writer, cpp_emitter, c_emitter, pydrofoil_emitter, archc_emitter, compiler_runner, pipeline_use_case, sail_parser, assembler = build_composition_root()
 
     if not os.path.exists(args.spec):
         print(f"Error: spec file not found '{args.spec}'")
@@ -387,6 +432,13 @@ def main() -> None:
     cp_parser.add_argument("-o", "--out-dir", default="pydrofoil_emulator", help="Output directory for Pydrofoil emulator")
     cp_parser.add_argument("--no-run", action="store_true", help="Skip test execution")
 
+    # Compile-ArchC command (Direct Sail -> ArchC ADL / SystemC Simulator)
+    ca_parser = subparsers.add_parser("compile-archc", help="Parse a Sail (.sail) file and generate ArchC SystemC simulator")
+    ca_parser.add_argument("file", help="Path to .sail specification file")
+    ca_parser.add_argument("--name", default="Parsed_ArchC_ISA", help="Name for the ISA")
+    ca_parser.add_argument("-o", "--out-dir", default="archc_emulator", help="Output directory for ArchC simulator")
+    ca_parser.add_argument("--no-compile", action="store_true", help="Skip acsim generation and C++ compilation")
+
     args = parser.parse_args()
     if args.command == "pipeline":
         sys.exit(run_pipeline_cmd(args))
@@ -400,6 +452,8 @@ def main() -> None:
         sys.exit(run_compile_c_cmd(args))
     elif args.command == "compile-pydrofoil":
         sys.exit(run_compile_pydrofoil_cmd(args))
+    elif args.command == "compile-archc":
+        sys.exit(run_compile_archc_cmd(args))
     elif args.command == "assemble":
         sys.exit(run_assemble_cmd(args))
     elif args.command == "exec-bytecode":

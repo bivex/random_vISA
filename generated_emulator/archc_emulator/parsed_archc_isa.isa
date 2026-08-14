@@ -1,0 +1,64 @@
+AC_ISA(parsed_archc_isa) {
+  ac_format Type_VV = "%funct6:6 %vm:1 %vs2:5 %vs1:5 %funct3:3 %vd:5 %opcode:7";
+  ac_format Type_VX = "%funct6:6 %vm:1 %vs2:5 %rs1:5 %funct3:3 %vd:5 %opcode:7";
+  ac_format Type_VI = "%funct6:6 %vm:1 %vs2:5 %imm:5 %funct3:3 %vd:5 %opcode:7";
+  ac_format Type_MVV = "%funct6:6 %vm:1 %vs2:5 %vs1:5 %funct3:3 %vd:5 %opcode:7";
+
+  // Instruction Declarations
+  ac_instr<Type_VV> vand_vv_0;
+  ac_instr<Type_VX> vmax_vx_1;
+  ac_instr<Type_VX> vdiv_vx_2;
+  ac_instr<Type_VX> vxor_vx_3;
+  ac_instr<Type_VX> vdiv_vx_4;
+  ac_instr<Type_VV> vmax_vv_5;
+  ac_instr<Type_VX> vdiv_vx_6;
+  ac_instr<Type_VX> vor_vx_7;
+  ac_instr<Type_VX> vsrl_vx_8;
+  ac_instr<Type_MVV> vclz_m_9;
+  ac_instr<Type_VX> vmin_vx_10;
+  ac_instr<Type_VV> vmul_vv_11;
+  ac_instr<Type_VV> vsrl_vv_12;
+  ac_instr<Type_VX> vsadd_vx_13;
+  ac_instr<Type_VV> vmul_vv_14;
+  ac_instr<Type_VX> vmax_vx_15;
+
+  ac_asm_map reg {
+    "$"[0..31] = [0..31];
+    "v"[0..31] = [0..31];
+  }
+
+  ISA_CTOR(parsed_archc_isa) {
+    vand_vv_0.set_asm("vand_vv_0 %vd, %vs2, %vs1");
+    vand_vv_0.set_decoder(funct6=0, funct3=0, opcode=0x57);
+    vmax_vx_1.set_asm("vmax_vx_1 %vd, %vs2, %rs1");
+    vmax_vx_1.set_decoder(funct6=1, funct3=4, opcode=0x57);
+    vdiv_vx_2.set_asm("vdiv_vx_2 %vd, %vs2, %rs1");
+    vdiv_vx_2.set_decoder(funct6=2, funct3=4, opcode=0x57);
+    vxor_vx_3.set_asm("vxor_vx_3 %vd, %vs2, %rs1");
+    vxor_vx_3.set_decoder(funct6=3, funct3=4, opcode=0x57);
+    vdiv_vx_4.set_asm("vdiv_vx_4 %vd, %vs2, %rs1");
+    vdiv_vx_4.set_decoder(funct6=4, funct3=4, opcode=0x57);
+    vmax_vv_5.set_asm("vmax_vv_5 %vd, %vs2, %vs1");
+    vmax_vv_5.set_decoder(funct6=5, funct3=0, opcode=0x57);
+    vdiv_vx_6.set_asm("vdiv_vx_6 %vd, %vs2, %rs1");
+    vdiv_vx_6.set_decoder(funct6=6, funct3=4, opcode=0x57);
+    vor_vx_7.set_asm("vor_vx_7 %vd, %vs2, %rs1");
+    vor_vx_7.set_decoder(funct6=7, funct3=4, opcode=0x57);
+    vsrl_vx_8.set_asm("vsrl_vx_8 %vd, %vs2, %rs1");
+    vsrl_vx_8.set_decoder(funct6=8, funct3=4, opcode=0x57);
+    vclz_m_9.set_asm("vclz_m_9 %vd, %vs2, %vs1");
+    vclz_m_9.set_decoder(funct6=9, funct3=2, opcode=0x57);
+    vmin_vx_10.set_asm("vmin_vx_10 %vd, %vs2, %rs1");
+    vmin_vx_10.set_decoder(funct6=10, funct3=4, opcode=0x57);
+    vmul_vv_11.set_asm("vmul_vv_11 %vd, %vs2, %vs1");
+    vmul_vv_11.set_decoder(funct6=11, funct3=0, opcode=0x57);
+    vsrl_vv_12.set_asm("vsrl_vv_12 %vd, %vs2, %vs1");
+    vsrl_vv_12.set_decoder(funct6=12, funct3=0, opcode=0x57);
+    vsadd_vx_13.set_asm("vsadd_vx_13 %vd, %vs2, %rs1");
+    vsadd_vx_13.set_decoder(funct6=13, funct3=4, opcode=0x57);
+    vmul_vv_14.set_asm("vmul_vv_14 %vd, %vs2, %vs1");
+    vmul_vv_14.set_decoder(funct6=14, funct3=0, opcode=0x57);
+    vmax_vx_15.set_asm("vmax_vx_15 %vd, %vs2, %rs1");
+    vmax_vx_15.set_decoder(funct6=15, funct3=4, opcode=0x57);
+  };
+};

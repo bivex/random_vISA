@@ -1,0 +1,11 @@
+AC_ARCH(parsed_archc_isa) {
+  ac_mem DM:512M;
+  ac_regbank VRB:32;
+  ac_regbank XRB:32;
+  ac_wordsize 32;
+
+  ARCH_CTOR(parsed_archc_isa) {
+    ac_isa("parsed_archc_isa.isa");
+    set_endian("little");
+  };
+};

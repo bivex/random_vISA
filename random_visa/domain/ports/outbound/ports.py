@@ -51,6 +51,18 @@ class PydrofoilCodeEmitterPort(ABC):
         pass
 
 
+class ArchCCodeEmitterPort(ABC):
+    """Port for generating ArchC ADL description files (.ac, .isa, _isa.cpp) and SystemC simulator project."""
+    @abstractmethod
+    def emit_archc_project(
+        self,
+        spec: VectorIsaSpec,
+        destination_dir: str,
+    ) -> List[str]:
+        """Emits ArchC .ac, .isa, _isa.cpp, main.cpp, and Makefile artifacts."""
+        pass
+
+
 class CompilerRunnerPort(ABC):
     """Port for compiling and executing generated C++ emulator test harness."""
     @abstractmethod
