@@ -10,6 +10,9 @@ A synthesizer for randomized RISC-V Vector Extensions / Vector ISAs (V-ISA) spec
 - [⛵ Sail Specification & ANTLR4 Grammar](docs/SAIL_SPECIFICATION.md) — Sail language syntax, AST model, and ANTLR4 parser integration.
 - [⚡ C++20 Emulator Architecture](docs/CPP_EMULATOR.md) — Register file (`v0-v31`), bitfield decoder, and Undefined Behavior (UB) safety mechanisms.
 - [🔧 CLI Reference Guide](docs/CLI_REFERENCE.md) — Detailed options and examples for `pipeline`, `synthesize`, `parse`, and `compile-sail`.
+- [🌌 VCPU Theoretical Limits](docs/VCPU_THEORETICAL_LIMITS.md) — Combinatorial capacity ($> 10^{56}$ VCPUs), instruction encoding space, and throughput.
+- [📐 Domain Model Specification](docs/DOMAIN_MODEL_SPEC.md) — Class diagram, Value Object invariants, and aggregate lifecycles.
+- [🧪 Development & Testing Guide](docs/DEVELOPMENT_AND_TESTING.md) — Pytest suite, extending instructions, modifying ANTLR4 grammar, and contributing.
 
 ---
 
