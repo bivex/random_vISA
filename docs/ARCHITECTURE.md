@@ -1,12 +1,12 @@
 # Architecture & Domain-Driven Design (DDD) Guide
 
-This document describes the architectural principles and design patterns used in **random_vISA**.
+This document describes the architectural principles, layers, component boundaries, and design patterns used in **random_vISA**.
 
 ---
 
-## 🏛 Hexagonal Architecture (Ports and Adapters)
+## 🏛 1. Hexagonal Architecture (Ports and Adapters) Overview
 
-The project strictly follows Hexagonal Architecture principles to isolate business logic from input triggers, code generators, parsers, and compilers:
+The project strictly follows Hexagonal Architecture principles to isolate core domain logic from input triggers, code generators, ANTLR4 parsers, and C++ compilers:
 
 ```
                       +-------------------------------------------------+
@@ -29,31 +29,38 @@ The project strictly follows Hexagonal Architecture principles to isolate busine
                       +-------------------------------------------------+
 ```
 
-### 1. Domain Layer (`random_visa/domain/`)
-- **No external framework dependencies**. Pure Python standard library & domain logic.
-- **Model**:
-  - `VectorIsaSpec`: Aggregate root encapsulating the complete ISA, register configuration, and instruction collision detection.
-  - `VectorInstruction`: Aggregate root representing a single instruction with its encoding parameters (`funct6`, `funct3`, `opcode`), format, and synthesized Sail AST.
-  - `VectorConfig`: Immutable Value Object enforcing powers-of-2 constraints on `VLEN`, `ELEN`, and register counts.
-  - `SailAst`: Pure AST representing Sail formal language elements (`SailType`, `SailExpr`, `SailStmt`, `SailFunctionDef`).
-- **Domain Services**:
-  - `RandomVisaGeneratorService`: Handles non-colliding opcode allocation, diversified arithmetic/bitwise/mask operation selection, and AST synthesis.
-- **Domain Events**:
-  - `InstructionSynthesizedEvent`, `IsaSpecCompletedEvent`, `CppEmulatorEmittedEvent`.
-- **Ports**:
-  - Abstract interfaces decoupling core domain logic from I/O mechanisms.
+---
 
-### 2. Application Layer (`random_visa/application/`)
-- Orchestrates use cases and maps DTOs to domain aggregates:
-  - `GenerateRandomVisaUseCase`: Coordinates spec synthesis.
-  - `EmitCppEmulatorUseCase`: Coordinates C++ generation.
-  - `RunFullPipelineUseCase`: Complete workflow pipeline.
+## 📦 2. Architectural Layers & Responsibilities Matrix
 
-### 3. Adapters Layer (`random_visa/adapters/`)
-- **Inbound Adapters (Driving)**:
-  - `cli/main.py`: Command-line interface with Rich tables, colored terminal formatting, and error handling.
-  - `parser/sail_antlr_adapter.py`: ANTLR4-based parser that translates `.sail` DSL into domain aggregates.
-- **Outbound Adapters (Driven)**:
-  - `sail/sail_file_adapter.py`: Serializes domain models into `.sail` formal specs.
-  - `cpp_codegen/cpp_emitter_adapter.py`: Generates clean C++20 emulator headers, sources, and CMake files.
-  - `compiler/clang_runner_adapter.py`: Invokes `clang++` / `g++` and executes the verification harness.
+| Layer | Package Path | External Dependencies | Core Responsibility |
+| :--- | :--- | :--- | :--- |
+| **Domain Layer** | `random_visa.domain` | **None** (Pure Python standard library) | Encapsulates all domain entities, value objects, aggregates, invariants, events, and port interfaces |
+| **Application Layer** | `random_visa.application` | Domain Layer | Coordinates use cases, orchestrates ports, handles DTO transformations, and executes business workflows |
+| **Inbound Adapters** | `random_visa.adapters.inbound` | Application, Domain, `rich`, `antlr4` | Translates external input (CLI parameters, `.sail` file streams) into application use-case calls |
+| **Outbound Adapters**| `random_visa.adapters.outbound`| Domain, `jinja2`, `subprocess` | Implements driven SPI ports: generates `.sail` files, renders C++ templates, and invokes compilers |
+
+---
+
+## 🔌 3. Ports & Adapters Mapping Matrix
+
+| Port Name | Port Direction | Defined In | Implemented By (Adapter) | Primary Function |
+| :--- | :---: | :--- | :--- | :--- |
+| **`GenerateSpecPort`** | Inbound (Driving) | `domain.ports.inbound` | `GenerateRandomVisaUseCase` | Synthesizes randomized Vector ISA specifications |
+| **`EmitEmulatorPort`** | Inbound (Driving) | `domain.ports.inbound` | `EmitCppEmulatorUseCase` | Emits C++ emulator source code for an ISA spec |
+| **`RunPipelinePort`** | Inbound (Driving) | `domain.ports.inbound` | `RunFullPipelineUseCase` | Orchestrates complete synthesis, export, code generation, and test execution |
+| **`SailParserPort`** | Inbound (Driving) | `domain.ports.inbound` | `AntlrSailParserAdapter` | Parses `.sail` source code via ANTLR4 into domain aggregates |
+| **`SailSpecWriterPort`** | Outbound (Driven) | `domain.ports.outbound` | `SailFileAdapter` | Formats and writes domain `VectorIsaSpec` to `.sail` files |
+| **`CppCodeEmitterPort`** | Outbound (Driven) | `domain.ports.outbound` | `CppEmulatorEmitterAdapter` | Generates standalone C++20 emulator headers, sources, and CMake files |
+| **`CompilerRunnerPort`** | Outbound (Driven) | `domain.ports.outbound` | `ClangCompilerRunnerAdapter` | Compiles C++ emulator with `clang++` and executes test verification |
+
+---
+
+## 🧩 4. Domain Entities, Aggregates & Value Objects Matrix
+
+| Component Name | Domain Classification | Location | Invariants / Validation Rules | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`VectorIsaSpec`** | Aggregate Root | `domain.model.isa_spec` | No encoding slot collision `(funct6, funct3, opcode)`, unique mnemonics | Root entity managing the full vector architecture, register definitions, and instruction list |
+| **`VectorInstruction`**| Entity / Aggregate | `domain.model.instruction` | Valid 6-bit `funct6`, 3-bit `funct3`, 7-bit opcode `0x57`, sound Sail AST | Encapsulates instruction format, encoding fields, operation semantics, and formal Sail function |
+| **`VectorConfig`** | Value Object (Immutable) | `domain.model.vector_config`| `vlen` power-of-2 $\ge 64$, `elen <= vlen`, `num_vregs` power-of-2 $\ge 8$ | Represents immutable hardware parameters of the vector execution pipeline |
+| **`SailAST` Nodes** | Value Objects | `domain.model.sail_ast` | Well-typed expressions, valid statement trees, parameter bindings | Pure AST modeling Sail types, expressions, vector loops, and let-bindings |
