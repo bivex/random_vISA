@@ -37,16 +37,24 @@ struct CSRState {
 
 class VRegFile {
 public:
-    std::array<std::array<uint8_t, VLEN_BYTES>, NUM_VREGS> regs{};
+    alignas(64) std::array<std::array<uint8_t, VLEN_BYTES>, NUM_VREGS> regs{};
 
-    void reset() {
+    void reset() noexcept {
         for (auto& r : regs) {
             r.fill(0);
         }
     }
 
+    inline uint8_t* get_reg_ptr(size_t reg_idx) noexcept {
+        return regs[reg_idx].data();
+    }
+
+    inline const uint8_t* get_reg_ptr(size_t reg_idx) const noexcept {
+        return regs[reg_idx].data();
+    }
+
     template <typename T>
-    T get_elem(size_t reg_idx, size_t elem_idx) const {
+    inline T get_elem(size_t reg_idx, size_t elem_idx) const noexcept {
         if (reg_idx >= NUM_VREGS) return 0;
         size_t offset = elem_idx * sizeof(T);
         if (offset + sizeof(T) > VLEN_BYTES) return 0;
@@ -56,14 +64,14 @@ public:
     }
 
     template <typename T>
-    void set_elem(size_t reg_idx, size_t elem_idx, T val) {
+    inline void set_elem(size_t reg_idx, size_t elem_idx, T val) noexcept {
         if (reg_idx >= NUM_VREGS) return;
         size_t offset = elem_idx * sizeof(T);
         if (offset + sizeof(T) > VLEN_BYTES) return;
         std::memcpy(&regs[reg_idx][offset], &val, sizeof(T));
     }
 
-    bool is_mask_set(size_t mask_reg, size_t elem_idx) const {
+    inline bool is_mask_set(size_t mask_reg, size_t elem_idx) const noexcept {
         if (mask_reg >= NUM_VREGS) return false;
         size_t byte_idx = elem_idx / 8;
         size_t bit_idx = elem_idx % 8;
@@ -87,18 +95,18 @@ struct EmulatorState {
     std::array<uint64_t, NUM_XREGS> xregs{};
     CSRState csr;
 
-    void reset() {
+    void reset() noexcept {
         vregs.reset();
         xregs.fill(0);
         csr = CSRState{};
     }
 
-    uint64_t get_xreg(size_t idx) const {
+    inline uint64_t get_xreg(size_t idx) const noexcept {
         if (idx == 0 || idx >= NUM_XREGS) return 0;
         return xregs[idx];
     }
 
-    void set_xreg(size_t idx, uint64_t val) {
+    inline void set_xreg(size_t idx, uint64_t val) noexcept {
         if (idx > 0 && idx < NUM_XREGS) {
             xregs[idx] = val;
         }
@@ -139,7 +147,7 @@ struct DecodedInstruction {
 
 class Decoder {
 public:
-    static DecodedInstruction decode(uint32_t word) {
+    static inline DecodedInstruction decode(uint32_t word) noexcept {
         DecodedInstruction dec;
         dec.raw_word = word;
         dec.opcode = word & 0x7F;
@@ -186,11 +194,11 @@ namespace visa_emulator {
 
 class InstructionExecutor {
 public:
-    static bool execute(EmulatorState& state, const DecodedInstruction& inst);
+    static bool execute(EmulatorState& state, const DecodedInstruction& inst) noexcept;
 
 private:
 {% for inst in instructions %}
-    static void exec_{{ inst.mnemonic }}(EmulatorState& state, const DecodedInstruction& inst);
+    static void exec_{{ inst.mnemonic }}(EmulatorState& state, const DecodedInstruction& inst) noexcept;
 {% endfor %}
 };
 
@@ -202,7 +210,7 @@ private:
 
 namespace visa_emulator {
 
-bool InstructionExecutor::execute(EmulatorState& state, const DecodedInstruction& inst) {
+bool InstructionExecutor::execute(EmulatorState& state, const DecodedInstruction& inst) noexcept {
     switch (inst.id) {
 {% for inst in instructions %}
     case InstId::{{ inst.mnemonic.upper() }}:
@@ -215,98 +223,184 @@ bool InstructionExecutor::execute(EmulatorState& state, const DecodedInstruction
 }
 
 {% for inst in instructions %}
-void InstructionExecutor::exec_{{ inst.mnemonic }}(EmulatorState& state, const DecodedInstruction& inst) {
+void InstructionExecutor::exec_{{ inst.mnemonic }}(EmulatorState& state, const DecodedInstruction& inst) noexcept {
     using elem_t = int32_t;
     const size_t vl = static_cast<size_t>(state.csr.vl);
-    
-    for (size_t i = 0; i < vl; ++i) {
-        if (inst.vm == 0 && !state.vregs.is_mask_set(0, i)) {
-            continue; // Masked out
-        }
-        
-        elem_t op2 = state.vregs.get_elem<elem_t>(inst.vs2, i);
+    auto* vd_ptr  = reinterpret_cast<elem_t*>(state.vregs.get_reg_ptr(inst.vd));
+    const auto* vs2_ptr = reinterpret_cast<const elem_t*>(state.vregs.get_reg_ptr(inst.vs2));
+
 {% if inst.binary_op %}
     {% if inst.format.value == "OPIVV" or inst.format.value == "OPRED" or inst.format.value == "OPWVV" %}
-        elem_t op1 = state.vregs.get_elem<elem_t>(inst.vs1, i);
+    const auto* vs1_ptr = reinterpret_cast<const elem_t*>(state.vregs.get_reg_ptr(inst.vs1));
     {% elif inst.format.value == "OPIVX" %}
-        elem_t op1 = static_cast<elem_t>(state.get_xreg(inst.rs1));
+    const elem_t op1_scalar = static_cast<elem_t>(state.get_xreg(inst.rs1));
     {% elif inst.format.value == "OPIVI" %}
-        elem_t op1 = static_cast<elem_t>(inst.imm);
+    const elem_t op1_scalar = static_cast<elem_t>(inst.imm);
     {% else %}
-        elem_t op1 = state.vregs.get_elem<elem_t>(inst.vs1, i);
+    const auto* vs1_ptr = reinterpret_cast<const elem_t*>(state.vregs.get_reg_ptr(inst.vs1));
     {% endif %}
 {% endif %}
 
-        elem_t result = 0;
+    if (__builtin_expect(inst.vm == 1, 1)) {
+        // Fast-path: Unmasked vectorized execution
+        #pragma clang loop vectorize(enable)
+        for (size_t i = 0; i < vl; ++i) {
+            elem_t op2 = vs2_ptr[i];
+{% if inst.binary_op %}
+    {% if inst.format.value == "OPIVX" or inst.format.value == "OPIVI" %}
+            elem_t op1 = op1_scalar;
+    {% else %}
+            elem_t op1 = vs1_ptr[i];
+    {% endif %}
+{% endif %}
+            elem_t result = 0;
 {% if inst.binary_op %}
     {% if inst.binary_op.name == "ADD" %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
     {% elif inst.binary_op.name == "SUB" %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) - static_cast<uint32_t>(op1));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) - static_cast<uint32_t>(op1));
     {% elif inst.binary_op.name == "MUL" %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) * static_cast<uint32_t>(op1));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) * static_cast<uint32_t>(op1));
     {% elif inst.binary_op.name == "DIV" %}
-        if (op1 == 0) {
-            result = -1;
-        } else if (op2 == INT32_MIN && op1 == -1) {
-            result = INT32_MIN;
-        } else {
-            result = op2 / op1;
-        }
+            if (op1 == 0) {
+                result = -1;
+            } else if (op2 == INT32_MIN && op1 == -1) {
+                result = INT32_MIN;
+            } else {
+                result = op2 / op1;
+            }
     {% elif inst.binary_op.name == "REM" %}
-        if (op1 == 0) {
-            result = op2;
-        } else if (op2 == INT32_MIN && op1 == -1) {
-            result = 0;
-        } else {
-            result = op2 % op1;
-        }
+            if (op1 == 0) {
+                result = op2;
+            } else if (op2 == INT32_MIN && op1 == -1) {
+                result = 0;
+            } else {
+                result = op2 % op1;
+            }
     {% elif inst.binary_op.name == "AND" %}
-        result = op2 & op1;
+            result = op2 & op1;
     {% elif inst.binary_op.name == "OR" %}
-        result = op2 | op1;
+            result = op2 | op1;
     {% elif inst.binary_op.name == "XOR" %}
-        result = op2 ^ op1;
+            result = op2 ^ op1;
     {% elif inst.binary_op.name == "SLL" %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) << (static_cast<uint32_t>(op1) & 31u));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) << (op1 & 31u));
     {% elif inst.binary_op.name == "SRL" %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) >> (static_cast<uint32_t>(op1) & 31u));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) >> (op1 & 31u));
     {% elif inst.binary_op.name == "SRA" %}
-        result = static_cast<elem_t>(op2 >> (static_cast<uint32_t>(op1) & 31u));
+            result = static_cast<elem_t>(op2 >> (op1 & 31u));
     {% elif inst.binary_op.name == "MIN" %}
-        result = std::min(op2, op1);
+            result = std::min(op2, op1);
     {% elif inst.binary_op.name == "MAX" %}
-        result = std::max(op2, op1);
+            result = std::max(op2, op1);
     {% elif inst.binary_op.name == "SADD" %}
-        int64_t sum = static_cast<int64_t>(op2) + static_cast<int64_t>(op1);
-        result = static_cast<elem_t>(std::clamp<int64_t>(sum, INT32_MIN, INT32_MAX));
+            result = static_cast<elem_t>(std::clamp<int64_t>(static_cast<int64_t>(op2) + op1, INT32_MIN, INT32_MAX));
     {% elif inst.binary_op.name == "SSUB" %}
-        int64_t diff = static_cast<int64_t>(op2) - static_cast<int64_t>(op1);
-        result = static_cast<elem_t>(std::clamp<int64_t>(diff, INT32_MIN, INT32_MAX));
+            result = static_cast<elem_t>(std::clamp<int64_t>(static_cast<int64_t>(op2) - op1, INT32_MIN, INT32_MAX));
     {% else %}
-        result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
     {% endif %}
 {% elif inst.unary_op %}
     {% if inst.unary_op.name == "NEG" %}
-        result = static_cast<elem_t>(0u - static_cast<uint32_t>(op2));
+            result = static_cast<elem_t>(0u - static_cast<uint32_t>(op2));
     {% elif inst.unary_op.name == "NOT" %}
-        result = ~op2;
+            result = ~op2;
     {% elif inst.unary_op.name == "ABS" %}
-        result = (op2 == INT32_MIN) ? INT32_MIN : ((op2 < 0) ? -op2 : op2);
+            result = (op2 == INT32_MIN) ? INT32_MIN : ((op2 < 0) ? -op2 : op2);
     {% elif inst.unary_op.name == "CLZ" %}
-        result = (op2 == 0) ? 32 : __builtin_clz(static_cast<uint32_t>(op2));
+            result = (op2 == 0) ? 32 : __builtin_clz(static_cast<uint32_t>(op2));
     {% elif inst.unary_op.name == "CTZ" %}
-        result = (op2 == 0) ? 32 : __builtin_ctz(static_cast<uint32_t>(op2));
+            result = (op2 == 0) ? 32 : __builtin_ctz(static_cast<uint32_t>(op2));
     {% elif inst.unary_op.name == "CPOP" %}
-        result = __builtin_popcount(static_cast<uint32_t>(op2));
+            result = __builtin_popcount(static_cast<uint32_t>(op2));
     {% else %}
-        result = op2;
+            result = op2;
     {% endif %}
 {% else %}
-        result = op2;
+            result = op2;
 {% endif %}
-
-        state.vregs.set_elem<elem_t>(inst.vd, i, result);
+            vd_ptr[i] = result;
+        }
+    } else {
+        // Slow-path: Masked execution
+        for (size_t i = 0; i < vl; ++i) {
+            if (!state.vregs.is_mask_set(0, i)) continue;
+            elem_t op2 = vs2_ptr[i];
+{% if inst.binary_op %}
+    {% if inst.format.value == "OPIVX" or inst.format.value == "OPIVI" %}
+            elem_t op1 = op1_scalar;
+    {% else %}
+            elem_t op1 = vs1_ptr[i];
+    {% endif %}
+{% endif %}
+            elem_t result = 0;
+{% if inst.binary_op %}
+    {% if inst.binary_op.name == "ADD" %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
+    {% elif inst.binary_op.name == "SUB" %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) - static_cast<uint32_t>(op1));
+    {% elif inst.binary_op.name == "MUL" %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) * static_cast<uint32_t>(op1));
+    {% elif inst.binary_op.name == "DIV" %}
+            if (op1 == 0) {
+                result = -1;
+            } else if (op2 == INT32_MIN && op1 == -1) {
+                result = INT32_MIN;
+            } else {
+                result = op2 / op1;
+            }
+    {% elif inst.binary_op.name == "REM" %}
+            if (op1 == 0) {
+                result = op2;
+            } else if (op2 == INT32_MIN && op1 == -1) {
+                result = 0;
+            } else {
+                result = op2 % op1;
+            }
+    {% elif inst.binary_op.name == "AND" %}
+            result = op2 & op1;
+    {% elif inst.binary_op.name == "OR" %}
+            result = op2 | op1;
+    {% elif inst.binary_op.name == "XOR" %}
+            result = op2 ^ op1;
+    {% elif inst.binary_op.name == "SLL" %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) << (op1 & 31u));
+    {% elif inst.binary_op.name == "SRL" %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) >> (op1 & 31u));
+    {% elif inst.binary_op.name == "SRA" %}
+            result = static_cast<elem_t>(op2 >> (op1 & 31u));
+    {% elif inst.binary_op.name == "MIN" %}
+            result = std::min(op2, op1);
+    {% elif inst.binary_op.name == "MAX" %}
+            result = std::max(op2, op1);
+    {% elif inst.binary_op.name == "SADD" %}
+            result = static_cast<elem_t>(std::clamp<int64_t>(static_cast<int64_t>(op2) + op1, INT32_MIN, INT32_MAX));
+    {% elif inst.binary_op.name == "SSUB" %}
+            result = static_cast<elem_t>(std::clamp<int64_t>(static_cast<int64_t>(op2) - op1, INT32_MIN, INT32_MAX));
+    {% else %}
+            result = static_cast<elem_t>(static_cast<uint32_t>(op2) + static_cast<uint32_t>(op1));
+    {% endif %}
+{% elif inst.unary_op %}
+    {% if inst.unary_op.name == "NEG" %}
+            result = static_cast<elem_t>(0u - static_cast<uint32_t>(op2));
+    {% elif inst.unary_op.name == "NOT" %}
+            result = ~op2;
+    {% elif inst.unary_op.name == "ABS" %}
+            result = (op2 == INT32_MIN) ? INT32_MIN : ((op2 < 0) ? -op2 : op2);
+    {% elif inst.unary_op.name == "CLZ" %}
+            result = (op2 == 0) ? 32 : __builtin_clz(static_cast<uint32_t>(op2));
+    {% elif inst.unary_op.name == "CTZ" %}
+            result = (op2 == 0) ? 32 : __builtin_ctz(static_cast<uint32_t>(op2));
+    {% elif inst.unary_op.name == "CPOP" %}
+            result = __builtin_popcount(static_cast<uint32_t>(op2));
+    {% else %}
+            result = op2;
+    {% endif %}
+{% else %}
+            result = op2;
+{% endif %}
+            vd_ptr[i] = result;
+        }
     }
 }
 {% endfor %}
