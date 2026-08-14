@@ -1,3 +1,6 @@
 [submodule "third_party/pydrofoil"]
 	path = third_party/pydrofoil
 	url = https://github.com/pydrofoil/pydrofoil
+[submodule "third_party/ArchC"]
+	path = third_party/ArchC
+	url = https://github.com/bivex/ArchC
