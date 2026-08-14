@@ -10,13 +10,13 @@
 
 namespace visa_emulator {
 
-constexpr size_t VLEN = 128;
+constexpr size_t VLEN = 256;
 constexpr size_t VLEN_BYTES = VLEN / 8;
 constexpr size_t NUM_VREGS = 32;
 constexpr size_t NUM_XREGS = 32;
 
 struct CSRState {
-    uint64_t vl{ 4 };
+    uint64_t vl{ 8 };
     uint64_t vtype{0};
     uint64_t vstart{0};
     uint64_t vxrm{0};
@@ -26,16 +26,24 @@ struct CSRState {
 
 class VRegFile {
 public:
-    std::array<std::array<uint8_t, VLEN_BYTES>, NUM_VREGS> regs{};
+    alignas(64) std::array<std::array<uint8_t, VLEN_BYTES>, NUM_VREGS> regs{};
 
-    void reset() {
+    void reset() noexcept {
         for (auto& r : regs) {
             r.fill(0);
         }
     }
 
+    inline uint8_t* get_reg_ptr(size_t reg_idx) noexcept {
+        return regs[reg_idx].data();
+    }
+
+    inline const uint8_t* get_reg_ptr(size_t reg_idx) const noexcept {
+        return regs[reg_idx].data();
+    }
+
     template <typename T>
-    T get_elem(size_t reg_idx, size_t elem_idx) const {
+    inline T get_elem(size_t reg_idx, size_t elem_idx) const noexcept {
         if (reg_idx >= NUM_VREGS) return 0;
         size_t offset = elem_idx * sizeof(T);
         if (offset + sizeof(T) > VLEN_BYTES) return 0;
@@ -45,14 +53,14 @@ public:
     }
 
     template <typename T>
-    void set_elem(size_t reg_idx, size_t elem_idx, T val) {
+    inline void set_elem(size_t reg_idx, size_t elem_idx, T val) noexcept {
         if (reg_idx >= NUM_VREGS) return;
         size_t offset = elem_idx * sizeof(T);
         if (offset + sizeof(T) > VLEN_BYTES) return;
         std::memcpy(&regs[reg_idx][offset], &val, sizeof(T));
     }
 
-    bool is_mask_set(size_t mask_reg, size_t elem_idx) const {
+    inline bool is_mask_set(size_t mask_reg, size_t elem_idx) const noexcept {
         if (mask_reg >= NUM_VREGS) return false;
         size_t byte_idx = elem_idx / 8;
         size_t bit_idx = elem_idx % 8;
@@ -76,18 +84,18 @@ struct EmulatorState {
     std::array<uint64_t, NUM_XREGS> xregs{};
     CSRState csr;
 
-    void reset() {
+    void reset() noexcept {
         vregs.reset();
         xregs.fill(0);
         csr = CSRState{};
     }
 
-    uint64_t get_xreg(size_t idx) const {
+    inline uint64_t get_xreg(size_t idx) const noexcept {
         if (idx == 0 || idx >= NUM_XREGS) return 0;
         return xregs[idx];
     }
 
-    void set_xreg(size_t idx, uint64_t val) {
+    inline void set_xreg(size_t idx, uint64_t val) noexcept {
         if (idx > 0 && idx < NUM_XREGS) {
             xregs[idx] = val;
         }
